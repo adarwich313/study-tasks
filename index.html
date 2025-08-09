@@ -1,214 +1,411 @@
-<!DOCTYPE html><html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Study Tasks + Timers (v5.5)</title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Study Tasks + Timers (v5.6 • Subtasks + Best Day)</title>
 <style>
-:root{--bg:#0b1225;--card:#111827;--text:#e5e7eb;--mut:#9aa3b2;--acc:#22c55e;--danger:#ef4444;--bd:rgba(148,163,184,.2);--ovl:rgba(2,6,23,.7)}
-*{box-sizing:border-box}html,body{height:100%}body{margin:0;background:linear-gradient(135deg,#0b1225,#121a33);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-.wrap{max-width:1040px;margin:24px auto;padding:16px}.card{background:rgba(17,24,39,.88);border:1px solid var(--bd);backdrop-filter:blur(6px);border-radius:16px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
-.h{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.h h1{margin:0;font-size:20px}.sp{flex:1}
-.pill{font-size:12px;background:rgba(148,163,184,.15);padding:4px 8px;border-radius:999px;border:1px solid var(--bd)}
-.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px}
-input[type="text"]{flex:1;min-width:220px;padding:10px 12px;border-radius:12px;border:1px solid var(--bd);background:#0b1225;color:var(--text)}
-button{cursor:pointer;border:0;border-radius:12px;padding:9px 12px;font-weight:600}
-.btn{background:transparent;border:1px solid var(--bd);color:var(--text)}.pri{background:var(--acc);color:#052e16}
-.dang{background:rgba(239,68,68,.12);color:#fecaca;border:1px solid rgba(239,68,68,.35)}
-.list{margin-top:12px}.mut{color:var(--mut)}
-.item{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;background:rgba(2,6,23,.5);border:1px solid rgba(148,163,184,.12);padding:9px 10px;border-radius:12px;margin:8px 0}
-.left{display:flex;gap:8px;align-items:center}.txt{padding:2px 4px;border-radius:6px}
-.txt[contenteditable="true"]{outline:2px solid rgba(148,163,184,.35);background:#0b1225}.done .txt{text-decoration:line-through;color:#9ca3af}
-.tm{font:600 12px ui-monospace,Menlo,monospace;background:rgba(148,163,184,.12);padding:3px 7px;border-radius:9px}
-.mini{font-size:12px;color:var(--mut)}.link{text-decoration:underline dotted;cursor:pointer}
-.pb{height:7px;background:rgba(148,163,184,.18);border-radius:999px;overflow:hidden;border:1px solid var(--bd);min-width:140px}.pb>div{height:100%;width:0;background:linear-gradient(90deg,#22c55e,#16a34a)}
-.pb.over>div{background:linear-gradient(90deg,#ef4444,#dc2626)}
-.subwrap{grid-column:1/-1;margin-top:6px;border-top:1px dashed rgba(148,163,184,.25);padding-top:6px}
-.overlay{position:fixed;inset:0;background:var(--ovl);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
-.modal{max-width:720px;width:100%;background:#0e162c;border:1px solid var(--bd);border-radius:16px;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
-.center{text-align:center}.clock{font:700 48px/1 ui-monospace,Menlo,monospace;margin:6px 0 10px}
-</style></head><body>
-<div class="wrap"><div class="card">
-  <div class="h"><h1>Study Tasks + Timers <span class="mut">(v5.5)</span></h1><div class="sp"></div>
-    <span id="today" class="pill">Today 00:00</span>
-    <span id="best" class="pill">🏆 Best 00:00</span>
-  </div>
-  <div class="row">
-    <input id="taskIn" placeholder="New task… e.g., Pathoma Ch. 1"><button id="add" class="pri">Add Task</button>
-    <button id="clr" class="btn">Clear Completed</button><button id="arc" class="btn">Archive Completed</button>
-    <button id="togArc" class="btn">Open Archive</button><button id="ex" class="btn">Export JSON</button>
-    <label class="btn" for="im">Import JSON</label><input id="im" type="file" accept="application/json" style="display:none">
-  </div>
-  <div class="row">
-    <span class="mut">Jingle</span>
-    <select id="snd" class="btn"><option value="ding">Ding</option><option value="chime">Chime</option><option value="pop">Pop</option><option value="custom">Custom</option></select>
-    <input id="sndFile" type="file" accept="audio/*">
-    <span class="mut">Vol</span><input id="vol" type="range" min="0" max="1" step="0.01" value="1" style="width:120px"><span id="vLab" class="mut">100%</span>
-    <label class="mut"><input id="play" type="checkbox" checked> Play on complete</label>
-    <label class="mut"><input id="beat" type="checkbox" checked> Chime when beating TTB</label>
-  </div>
-  <div id="list" class="list"></div><div id="arch" class="list" style="display:none"></div>
-</div></div>
+  :root{--bg:#0b1225;--card:#111827;--text:#e5e7eb;--muted:#9aa3b2;--accent:#22c55e;--danger:#ef4444;--border:rgba(148,163,184,.2);--overlay:rgba(2,6,23,.7)}
+  html,body{height:100%}
+  body{margin:0;background:linear-gradient(135deg,#0b1225,#121a33);color:#e5e7eb;font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  .wrap{max-width:1040px;margin:24px auto;padding:16px}
+  .card{background:rgba(17,24,39,.84);border:1px solid var(--border);backdrop-filter: blur(6px);border-radius:16px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  .header{display:flex;align-items:center;gap:10px}
+  h1{margin:0;font-size:22px}
+  .spacer{flex:1}
+  .pill{font-size:12px;background:rgba(148,163,184,.15);padding:4px 8px;border-radius:999px;border:1px solid var(--border);margin-left:8px}
+  .muted{color:var(--muted);font-size:12px}
+  .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  input[type="text"], input[type="number"], input[type="datetime-local"], input[type="date"]{flex:1;min-width:200px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:#0b1225;color:#e5e7eb;outline:none}
+  button{cursor:pointer;border:0;border-radius:12px;padding:10px 14px;font-weight:600}
+  .btn{background:transparent;border:1px solid var(--border);color:#e5e7eb}
+  .btn-primary{background:var(--accent);color:#052e16;border:0}
+  .btn-danger{background:rgba(239,68,68,.12);color:#fecaca;border:1px solid rgba(239,68,68,.35)}
+  .list{margin-top:14px}
+  .item{display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center;background:rgba(2,6,23,.5);border:1px solid rgba(148,163,184,.12);padding:10px 12px;border-radius:12px;margin:8px 0}
+  .left{display:flex;gap:10px;align-items:center}
+  .txt{word-break:break-word;padding:2px 4px;border-radius:6px}
+  .txt[contenteditable="true"]{outline:2px solid rgba(148,163,184,.35);background:#0b1225}
+  .done .txt{text-decoration:line-through;color:#9ca3af}
+  .timer{font-family:ui-monospace,Menlo,monospace;background:rgba(148,163,184,.12);padding:4px 8px;border-radius:10px}
+  .controls button{margin-left:6px}
+  #err{margin-top:8px;color:#fecaca;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);padding:8px 10px;border-radius:10px;display:none;font-size:12px;white-space:pre-wrap}
+  .progress-wrap{display:flex;align-items:center;gap:10px;margin:8px 0}
+  .progress{flex:1;height:10px;background:rgba(148,163,184,.18);border-radius:999px;overflow:hidden;border:1px solid var(--border)}
+  .progress>div{height:100%;width:0;background:linear-gradient(90deg,#22c55e,#16a34a);transition:width .2s}
+  .sep{height:1px;background:rgba(148,163,184,.18);margin:12px 0}
+  .mini{font-size:12px;color:#9aa3b2}
+  .goal-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .mini-bar{flex:1;min-width:140px;height:8px;background:rgba(148,163,184,.18);border-radius:999px;overflow:hidden;border:1px solid var(--border)}
+  .mini-bar>div{height:100%;width:0;background:linear-gradient(90deg,#22c55e,#16a34a);transition:width .2s}
+  .mini-bar.over>div{background:linear-gradient(90deg,#ef4444,#dc2626)}
+  .overlay{position:fixed;inset:0;background:var(--overlay);display:none;align-items:center;justify-content:center;padding:20px;z-index:60}
+  .modal{max-width:760px;width:100%;background:rgba(17,24,39,.95);border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.5);position:relative}
+  .close-x{position:absolute;right:18px;top:14px;background:transparent;border:1px solid var(--border);color:#e5e7eb;border-radius:10px;padding:6px 10px;cursor:pointer}
+  .clock{font:700 56px/1 ui-monospace,Menlo,monospace;text-align:center;margin:8px 0 16px}
+  .focus-line{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+  .heat{display:grid;grid-template-columns:repeat(14,10px);gap:3px;align-items:center}
+  .cell{width:10px;height:10px;border-radius:2px;background:#1f2937;border:1px solid rgba(148,163,184,.12)}
+  .lvl1{background:#1f6f3b} .lvl2{background:#2ea44f} .lvl3{background:#22c55e} .lvl4{background:#86efac}
+  .subwrap{grid-column:1/-1;margin-left:36px;margin-top:6px;border-left:2px dashed rgba(148,163,184,.25);padding-left:12px}
+  .subheader{display:flex;align-items:center;gap:8px;margin-top:4px}
+  .tiny{font-size:11px;padding:4px 6px;border-radius:8px;border:1px solid var(--border);background:transparent;color:#e5e7eb}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="header">
+      <h1>Study Tasks + Timers <span class="muted">(v5.6)</span></h1>
+      <div class="spacer"></div>
+      <span id="todayTop" class="pill">Today 00:00</span>
+      <span id="bestDay" class="pill" title="Best single-day total">Best —</span>
+    </div>
 
-<div id="ovl" class="overlay"><div class="modal"><div class="center">
-  <h3 id="fTitle">Focus</h3><div id="fClock" class="clock">00:00:00</div>
-  <div id="fLines" class="mut" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"></div>
-  <div class="row" style="justify-content:center">
-    <button id="fStart" class="pri">Start</button><button id="fPause" class="btn">Pause</button>
-    <button id="fReset" class="dang">Reset</button><button id="fDone" class="btn">Mark Done</button>
-    <button id="fClose" class="btn">Close</button>
+    <div class="row" style="margin-top:8px">
+      <input id="taskInput" type="text" placeholder="New task… e.g., Pathoma Chapter 1">
+      <button class="btn-primary" id="addBtn" type="button">Add Task</button>
+      <button class="btn" id="clearDoneBtn" type="button">Clear Completed</button>
+      <button class="btn" id="archiveBtn" type="button">Archive Completed</button>
+      <button class="btn" id="toggleArchive" type="button">Open Archive</button>
+      <button class="btn" id="exportBtn" type="button">Export JSON</button>
+      <label class="btn" for="importFile" style="cursor:pointer;">Import JSON</label>
+      <input id="importFile" type="file" accept="application/json" style="display:none">
+    </div>
+
+    <div class="row" style="margin-top:8px">
+      <label class="muted">Jingle</label>
+      <select id="soundSelect" class="btn">
+        <option value="ding">Ding</option>
+        <option value="chime">Chime</option>
+        <option value="pop">Pop</option>
+        <option value="custom">Custom (uploaded)</option>
+      </select>
+      <input type="file" id="soundFile" accept="audio/*">
+      <label class="muted">Volume</label>
+      <input id="vol" type="range" min="0" max="1" step="0.01" value="1" style="width:140px">
+      <span id="volLabel" class="muted">100%</span>
+      <label class="muted"><input id="playToggle" type="checkbox" checked> Play on complete</label>
+      <label class="muted"><input id="beatToggle" type="checkbox" checked> Chime when I beat TTB</label>
+      <label class="muted"><input id="ttbToggle" type="checkbox" checked> Show TTB/Deadline bars</label>
+      <button id="testBtn" class="btn" type="button">Test Jingle</button>
+    </div>
+
+    <div class="row" style="margin-top:8px">
+      <span id="streak" class="pill">🔥 Streak: 0</span>
+      <div id="heatmap" class="heat" title="Daily minutes heatmap (last 14×7 days)"></div>
+      <span id="totalTime" class="pill" style="margin-left:auto">Total 00:00:00</span>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress"><div id="progBar"></div></div>
+      <span id="progText" class="muted">0% (0/0 done)</span>
+    </div>
+
+    <div id="list" class="list" aria-live="polite"></div>
+    <div id="archList" class="list" style="display:none"></div>
+    <div id="err"></div>
   </div>
-</div></div></div>
+</div>
+
+<!-- Focus Modal -->
+<div id="overlay" class="overlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <button id="closeFocus" class="close-x">Close (Esc)</button>
+    <h2 id="focusTitle">Focus</h2>
+    <div class="clock" id="focusClock">00:00:00</div>
+    <div class="focus-line" id="focusTTBLine"></div>
+    <div class="focus-line" id="focusDeadLine"></div>
+    <div class="row" style="justify-content:center">
+      <button id="focusStart" class="btn-primary">Start</button>
+      <button id="focusPause" class="btn">Pause</button>
+      <button id="focusReset" class="btn btn-danger">Reset</button>
+      <button id="focusDone" class="btn">Mark Done</button>
+    </div>
+    <div class="muted" style="text-align:center;margin-top:6px">Shortcuts: Space start/pause • R reset • Esc close</div>
+  </div>
+</div>
 
 <script>
-(()=>{
-const $=id=>document.getElementById(id), on=(e,t,f)=>e.addEventListener(t,f), pad=n=>String(n).padStart(2,'0');
-const fmtHMS=ms=>{ms=Math.max(0,ms|0);const s=(ms/1e3|0);return pad(s/3600|0)+':'+pad((s%3600)/60|0)+':'+pad(s%60)};
-const fmtHM=ms=>{ms=Math.max(0,ms/6e4|0);return pad(ms/60|0)+':'+pad(ms%60)};
-const newId=()=> 'id-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-const LS_T='tasks_v55', LS_A='arch_v55', LS_S='set_v55', LS_B='best_v55';
-let state={tasks:js(LS_T,[]), arch:js(LS_A,[]), set:Object.assign({snd:'ding',cust:null,vol:1,play:true,beat:true}, js(LS_S,{})), best:js(LS_B,{m:0,date:null})};
-function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
-function js(k,f){try{let v=localStorage.getItem(k);return v?JSON.parse(v):f}catch{return f}}
-const list=$('list'), arcList=$('arch');
+(function(){
+  const on=(el,ev,fn)=>el.addEventListener(ev,fn);
+  const $=id=>document.getElementById(id);
+  const pad=n=>String(n).padStart(2,'0');
+  const fmtHMS=ms=>{ms=Math.max(0,Math.floor(ms||0));const s=Math.floor(ms/1000);return pad(Math.floor(s/3600))+':'+pad(Math.floor((s%3600)/60))+':'+pad(s%60)};
+  const fmtHM=ms=>{ms=Math.max(0,Math.floor(ms/60000));return pad(Math.floor(ms/60))+':'+pad(ms%60)};
+  const newId=()=> 'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);
+  const safeSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
+  const safeGet=(k,fb)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb}catch{return fb}};
 
-// audio
-const snd=$('snd'), sndFile=$('sndFile'), vol=$('vol'), vLab=$('vLab'), play=$('play'), beat=$('beat');
-snd.value=state.set.cust?'custom':(state.set.snd||'ding'); vol.value=+state.set.vol||1; vLab.textContent=(vol.value*100|0)+'%'; play.checked=!!state.set.play; beat.checked=!!state.set.beat;
-on(snd,'change',()=>{state.set.snd=snd.value; sv(LS_S,state.set)});
-on(sndFile,'change',()=>{const f=sndFile.files[0]; if(!f) return; const fr=new FileReader(); fr.onload=()=>{state.set.cust=fr.result; snd.value='custom'; state.set.snd='custom'; sv(LS_S,state.set)}; fr.readAsDataURL(f)});
-on(vol,'input',()=>{state.set.vol=+vol.value; vLab.textContent=(vol.value*100|0)+'%'; sv(LS_S,state.set)});
-on(play,'change',()=>{state.set.play=play.checked; sv(LS_S,state.set)});
-on(beat,'change',()=>{state.set.beat=beat.checked; sv(LS_S,state.set)});
+  const LS_T='study_tasks_v56', LS_S='study_settings_v56', LS_A='study_archived_v56', LS_B='study_best_v56';
 
-function bell(){ if(!state.set.play) return; const v=+state.set.vol||1;
-  if(state.set.cust && snd.value==='custom'){ const a=new Audio(state.set.cust); a.volume=v; a.play().catch(()=>{}); return; }
-  const ctx=new (window.AudioContext||window.webkitAudioContext)(), now=ctx.currentTime;
-  const B=(f,d,vol,del,type='sine')=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type=type;o.frequency.value=f;g.gain.setValueAtTime(.0001,now+del);g.gain.exponentialRampToValueAtTime(vol,now+del+.02);g.gain.exponentialRampToValueAtTime(.0001,now+del+d);o.connect(g).connect(ctx.destination);o.start(now+del);o.stop(now+del+d+.02)};
-  const m=snd.value||'ding'; if(m==='ding'){B(880,.1,.7,0);B(1175,.12,.6,.12)} else if(m==='chime'){B(659,.25,.8,0);B(523,.35,.6,.02);B(784,.4,.5,.03)} else {B(300,.09,.4,0,'square')}
-}
-function blip(){ if(!state.set.beat) return; const ctx=new (window.AudioContext||window.webkitAudioContext)(), n=ctx.currentTime;
-  const t=(f,d,vol,del)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type='triangle';o.frequency.value=f;g.gain.setValueAtTime(.0001,n+del);g.gain.exponentialRampToValueAtTime(vol,n+del+.02);g.gain.exponentialRampToValueAtTime(.0001,n+del+d);o.connect(g).connect(ctx.destination);o.start(n+del);o.stop(n+del+d+.02)}; t(988,.08,.5,0); t(1319,.1,.5,.1);
-}
+  let state={
+    tasks:safeGet(LS_T,[]),
+    archived:safeGet(LS_A,[]),
+    settings:Object.assign({sound:'ding',custom:null,vol:1,play:true,beatChime:true,showTTB:true}, safeGet(LS_S,{})),
+    best: safeGet(LS_B,{minutes:0,date:null})
+  };
 
-const nowMs=() => Date.now();
-const curMs=t => t.running ? t.elapsed + (nowMs()-(t.startedAt||nowMs())) : t.elapsed;
+  const listEl=$('list'), inputEl=$('taskInput'), addBtn=$('addBtn');
+  const soundSel=$('soundSelect'), fileEl=$('soundFile'), volEl=$('vol'), volLabel=$('volLabel'), playChk=$('playToggle'), beatChk=$('beatToggle'), testBtn=$('testBtn');
+  const exportBtn=$('exportBtn'), importFile=$('importFile');
+  const progBar=$('progBar'), progText=$('progText'), totalTime=$('totalTime'), todayTop=$('todayTop');
+  const streakEl=$('streak'), heatEl=$('heatmap'), bestDay=$('bestDay');
+  const overlay=$('overlay'), focusTitle=$('focusTitle'), focusClock=$('focusClock'), focusStart=$('focusStart'), focusPause=$('focusPause'), focusReset=$('focusReset'), focusDone=$('focusDone');
+  const ttbToggle=$('ttbToggle');
 
-function render(){
-  list.innerHTML=''; if(!state.tasks.length){const d=document.createElement('div'); d.className='mut'; d.textContent='No tasks yet — add one above.'; list.appendChild(d);}
-  state.tasks.slice().sort((a,b)=> (a.order-b.order)||(a.created>b.created?1:-1)).forEach((t,i)=> list.appendChild(rowTask(t,i)));
-  drawBest();
-}
+  function saveSettings(){ safeSet(LS_S,state.settings) }
+  function save(){ safeSet(LS_T,state.tasks) }
+  function saveArchive(){ safeSet(LS_A,state.archived) }
+  function saveBest(){ safeSet(LS_B,state.best) }
 
-function editable(div,obj){ const start=()=>{div.setAttribute('contenteditable','true'); div.focus(); let r=document.createRange(); r.selectNodeContents(div); r.collapse(false); let s=window.getSelection(); s.removeAllRanges(); s.addRange(r)};
-  const stop=(save)=>{ if(div.getAttribute('contenteditable')!=='true') return; div.removeAttribute('contenteditable'); if(save){ const v=div.textContent.trim(); if(v){obj.text=v; sv(LS_T,state.tasks);} else div.textContent=obj.text;} else div.textContent=obj.text; };
-  on(div,'click',start); on(div,'keydown',e=>{if(e.key==='Enter'){e.preventDefault();stop(true)} if(e.key==='Escape'){e.preventDefault();stop(false)}}); on(div,'blur',()=>stop(true));
-}
+  function ensureShapeTask(t){
+    if(t.sessions===undefined) t.sessions=[];
+    if(t.ttb_ms===undefined) t.ttb_ms=null;
+    if(t.deadline_ts===undefined) t.deadline_ts=null;
+    if(t.completed_at===undefined) t.completed_at=null;
+    if(!Array.isArray(t.subtasks)) t.subtasks=[];
+    t.subtasks.forEach(ensureShapeTask);
+  }
 
-function rowTask(t,idx){
-  if(!Array.isArray(t.sub)) t.sub=[]; if(!t.sessions) t.sessions=[]; if(t.ttb_ms===undefined) t.ttb_ms=null; if(t.deadline_ts===undefined) t.deadline_ts=null;
-  const r=doc('div','item'+(t.done?' done':''));
-  const left=doc('div','left');
-  const cb=doc('input'); cb.type='checkbox'; cb.checked=t.done; on(cb,'change',()=>{ if(cb.checked){ if(t.running) pause(t); t.done=true; t.completed_at=new Date().toISOString(); if(t.ttb_ms && curMs(t)<=t.ttb_ms) blip(); bell(); } else { t.done=false; t.completed_at=null;} sv(LS_T,state.tasks); render(); });
-  const txt=doc('div','txt'); txt.textContent=t.text; editable(txt,t); left.appendChild(cb); left.appendChild(txt);
-  const tm=doc('span','tm'); tm.id='tm-'+t.id; tm.textContent=fmtHMS(curMs(t));
-  const ctr=doc('div');
-  const sbtn=btn(t.running?'Pause':'Start'); on(sbtn,'click',()=>{ if(t.running) pause(t); else start(t); tm.textContent=fmtHMS(curMs(t)); sbtn.textContent=t.running?'Pause':'Start'; sv(LS_T,state.tasks) });
-  const rs=btn('Reset'); on(rs,'click',()=>{ if(confirm('Reset timer?')){ t.elapsed=0; t.sessions=[]; if(t.running) t.startedAt=nowMs(); tm.textContent=fmtHMS(curMs(t)); sv(LS_T,state.tasks); render(); } });
-  const up=btn('↑'), dn=btn('↓'); on(up,'click',()=>move(idx,Math.max(0,idx-1))); on(dn,'click',()=>move(idx,Math.min(state.tasks.length-1,idx+1)));
-  const foc=btn('Focus','pri'); on(foc,'click',()=>openFocus(t));
-  const del=btn('Delete','dang'); on(del,'click',()=>{ if(confirm('Delete task?')){ if(t.running) pause(t); state.tasks=state.tasks.filter(x=>x.id!==t.id); reindex(); sv(LS_T,state.tasks); render(); }});
-  ctr.append(sbtn,rs,up,dn,foc,del);
-  // goals line
-  const g=doc('div'); g.style.gridColumn='1/-1';
-  const ttb=doc('span','mini link'); ttb.id='ttb-'+t.id; ttb.title='Click to set/clear TTB (minutes)'; on(ttb,'click',()=>setTTB(t,t.id)); const bar=doc('div','pb'); bar.id='bar-'+t.id; bar.appendChild(doc('div'));
-  const ddl=doc('span','mini link'); ddl.id='dl-'+t.id; ddl.title='Click to set deadline minutes from now (blank=clear)'; on(ddl,'click',()=>setDL(t,t.id));
-  g.append(ttb,bar,ddl);
-  // subtasks
-  const subwrap=doc('div','subwrap'), sh=doc('div'), sin=doc('input'); sin.placeholder='Add subtask…'; const sadd=btn('Add Subtask'); on(sadd,'click',()=>{ const v=(sin.value||'').trim(); if(!v) return; t.sub.push(newSub(v)); sv(LS_T,state.tasks); render(); }); on(sin,'keydown',e=>{if(e.key==='Enter'){e.preventDefault();sadd.click()}}); sh.append(sin,sadd);
-  const sl=doc('div'); t.sub.forEach((st,i)=> sl.appendChild(rowSub(t,st,i))); subwrap.append(sh,sl);
+  // hydrate
+  (state.tasks||[]).forEach(ensureShapeTask);
+  (state.archived||[]).forEach(ensureShapeTask);
 
-  r.append(left,tm,ctr,g,subwrap);
-  updGoals(t,t.id);
-  if(t.sub.length){ const all=t.sub.every(x=>x.done); if(all && !t.done){ t.done=true; cb.checked=true; sv(LS_T,state.tasks); } if(!all && t.done){ t.done=false; cb.checked=false; sv(LS_T,state.tasks); } }
-  return r;
-}
-function rowSub(p,st,idx){
-  if(!st.sessions) st.sessions=[]; if(st.ttb_ms===undefined) st.ttb_ms=null; if(st.deadline_ts===undefined) st.deadline_ts=null;
-  const key=p.id+'__'+st.id, r=doc('div','item'+(st.done?' done':'')), left=doc('div','left');
-  const cb=doc('input'); cb.type='checkbox'; cb.checked=st.done; on(cb,'change',()=>{ if(cb.checked){ if(st.running) pause(st); st.done=true; st.completed_at=new Date().toISOString(); if(st.ttb_ms && curMs(st)<=st.ttb_ms) blip(); bell(); } else { st.done=false; st.completed_at=null;} sv(LS_T,state.tasks); render(); });
-  const txt=doc('div','txt'); txt.textContent=st.text; editable(txt,st); left.append(cb,txt);
-  const tm=doc('span','tm'); tm.id='tm-'+key; tm.textContent=fmtHMS(curMs(st));
-  const ctr=doc('div'); const sbtn=btn(st.running?'Pause':'Start'); on(sbtn,'click',()=>{ if(st.running) pause(st); else start(st); tm.textContent=fmtHMS(curMs(st)); sbtn.textContent=st.running?'Pause':'Start'; sv(LS_T,state.tasks)});
-  const rs=btn('Reset'); on(rs,'click',()=>{ if(confirm('Reset subtask timer?')){ st.elapsed=0; st.sessions=[]; if(st.running) st.startedAt=nowMs(); tm.textContent=fmtHMS(curMs(st)); sv(LS_T,state.tasks); render(); } });
-  const up=btn('↑'), dn=btn('↓'); on(up,'click',()=>moveSub(p,idx,Math.max(0,idx-1))); on(dn,'click',()=>moveSub(p,idx,Math.min(p.sub.length-1,idx+1)));
-  const foc=btn('Focus','pri'); on(foc,'click',()=>openFocus(st,p));
-  const del=btn('Delete','dang'); on(del,'click',()=>{ if(confirm('Delete subtask?')){ if(st.running) pause(st); p.sub=p.sub.filter(x=>x.id!==st.id); sv(LS_T,state.tasks); render(); }});
-  ctr.append(sbtn,rs,up,dn,foc,del);
-  const g=doc('div'); g.style.gridColumn='1/-1';
-  const ttb=doc('span','mini link'); ttb.id='ttb-'+key; on(ttb,'click',()=>setTTB(st,key)); const bar=doc('div','pb'); bar.id='bar-'+key; bar.appendChild(doc('div'));
-  const ddl=doc('span','mini link'); ddl.id='dl-'+key; on(ddl,'click',()=>setDL(st,key)); g.append(ttb,bar,ddl);
-  r.append(left,tm,ctr,g); updGoals(st,key); return r;
-}
+  soundSel.value=state.settings.custom?'custom':(state.settings.sound||'ding');
+  volEl.value=typeof state.settings.vol==='number'?state.settings.vol:1; volLabel.textContent=Math.round(+volEl.value*100)+'%';
+  playChk.checked=!!state.settings.play; beatChk.checked=!!state.settings.beatChime; ttbToggle.checked=!!state.settings.showTTB;
 
-function setTTB(obj,key){ const cur=obj.ttb_ms?Math.round(obj.ttb_ms/6e4):''; const v=prompt('TTB minutes (blank to clear):', cur); if(v===null) return; const m=parseInt(v,10); obj.ttb_ms=(isFinite(m)&&m>0)? m*6e4 : null; sv(LS_T,state.tasks); updGoals(obj,key); }
-function setDL(obj,key){ const v=prompt('Deadline minutes from now (blank to clear):',''); if(v===null) return; const m=parseInt(v,10); obj.deadline_ts=(isFinite(m)&&m>0)? (nowMs()+m*6e4):null; sv(LS_T,state.tasks); updGoals(obj,key); }
-function updGoals(obj,key){ const t=$('ttb-'+key), b=$('bar-'+key), d=$('dl-'+key); if(t&&b){ if(obj.ttb_ms){ const ms=curMs(obj), rem=obj.ttb_ms-ms, pct=Math.max(0,Math.min(100, Math.round(ms/obj.ttb_ms*100))); b.firstChild.style.width=pct+'%'; b.classList.toggle('over', rem<0); t.textContent = 'TTB: '+Math.round(obj.ttb_ms/6e4)+'m • '+(rem>=0?('remaining '+fmtHMS(rem)):('over by '+fmtHMS(-rem))); } else { t.textContent='TTB: —'; b.firstChild.style.width='0%'; b.classList.remove('over'); } } if(d){ if(obj.deadline_ts){ const diff=obj.deadline_ts-nowMs(); d.textContent='Deadline: '+(diff>=0?('⏳ '+fmtHMS(diff)+' left'):('⏰ past by '+fmtHMS(-diff))); d.style.color=diff<0?'#fecaca':''; } else { d.textContent='Deadline: —'; d.style.color=''; } } }
+  on(soundSel,'change',()=>{state.settings.sound=soundSel.value;saveSettings()});
+  on(fileEl,'change',()=>{const f=fileEl.files[0];if(!f)return;const fr=new FileReader();fr.onload=()=>{state.settings.custom=fr.result;state.settings.sound='custom';soundSel.value='custom';saveSettings()};fr.readAsDataURL(f)});
+  on(volEl,'input',()=>{state.settings.vol=+volEl.value;volLabel.textContent=Math.round(+volEl.value*100)+'%';saveSettings()});
+  on(playChk,'change',()=>{state.settings.play=!!playChk.checked;saveSettings()});
+  on(beatChk,'change',()=>{state.settings.beatChime=!!beatChk.checked;saveSettings()});
+  on(ttbToggle,'change',()=>{state.settings.showTTB=!!ttbToggle.checked;saveSettings(); render();});
 
-function btn(t,cls='btn'){ const b=document.createElement('button'); b.className=cls; b.textContent=t; return b }
-function doc(tag,cls){ const e=document.createElement(tag); if(cls) e.className=cls; return e }
-function newSub(text){ return {id:newId(),text,done:false,elapsed:0,running:false,startedAt:null,created:new Date().toISOString(),order:0,sessions:[],ttb_ms:null,deadline_ts:null,completed_at:null} }
+  function playJingle(){ if(!state.settings.play) return; const v=typeof state.settings.vol==='number'?state.settings.vol:1;
+    if(state.settings.custom&&soundSel.value==='custom'){const a=new Audio(state.settings.custom);a.volume=v;a.play().catch(()=>{});return}
+    const ctx=new (window.AudioContext||window.webkitAudioContext)(); const now=ctx.currentTime;
+    const beep=(f,d,vol,delay,type='sine')=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type=type;o.frequency.value=f;g.gain.setValueAtTime(0.0001,now+delay);g.gain.exponentialRampToValueAtTime(vol,now+delay+0.02);g.gain.exponentialRampToValueAtTime(0.0001,now+delay+d);o.connect(g).connect(ctx.destination);o.start(now+delay);o.stop(now+delay+d+0.02)};
+    const m=soundSel.value||'ding'; if(m==='ding'){beep(880,0.10,v*0.7,0);beep(1175,0.12,v*0.6,0.12)} else if(m==='chime'){beep(659,0.25,v*0.8,0);beep(523,0.35,v*0.6,0.02);beep(784,0.40,v*0.5,0.03)} else {beep(300,0.09,v*0.4,0,'square')}
+  }
+  function playBeat(){ if(!state.settings.beatChime) return; const ctx=new (window.AudioContext||window.webkitAudioContext)(); const now=ctx.currentTime;
+    const t=(f,d,vol,delay)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type='triangle';o.frequency.value=f;g.gain.setValueAtTime(0.0001,now+delay);g.gain.exponentialRampToValueAtTime(vol,now+delay+0.02);g.gain.exponentialRampToValueAtTime(0.0001,now+delay+d);o.connect(g).connect(ctx.destination);o.start(now+delay);o.stop(now+delay+d+0.02)}; t(988,0.08,0.5,0); t(1319,0.10,0.5,0.10);
+  }
 
-function move(from,to){ if(from===to) return; const arr=state.tasks.slice().sort((a,b)=>(a.order-b.order)||(a.created>b.created?1:-1)); const it=arr.splice(from,1)[0]; arr.splice(to,0,it); arr.forEach((t,i)=>t.order=i); state.tasks=arr; sv(LS_T,arr); render(); }
-function reindex(){ state.tasks.forEach((t,i)=>t.order=i) }
-function moveSub(p,from,to){ if(from===to) return; const a=p.sub.slice(); const it=a.splice(from,1)[0]; a.splice(to,0,it); p.sub=a; sv(LS_T,state.tasks); render(); }
+  const currentMs = t => t.running ? t.elapsed + (Date.now()-(t.startedAt||Date.now())) : t.elapsed;
+  const fmtDelta=ms=>{ms=Math.floor(Math.abs(ms)/1000);const h=Math.floor(ms/3600),m=Math.floor((ms%3600)/60),s=ms%60;const p=[];if(h)p.push(h+'h');if(m||h)p.push(m+'m');p.push(s+'s');return p.join(' ')}
 
-function start(t){ // pause all others
-  state.tasks.forEach(x=>{ if(x.running && x!==t) pause(x); (x.sub||[]).forEach(s=>{ if(s.running && s!==t) pause(s); }); });
-  if(t.running) return; t.running=true; t.startedAt=nowMs(); (t.sessions||(t.sessions=[])).push({start:t.startedAt,end:null});
-}
-function pause(t){ if(!t.running) return; t.elapsed += nowMs()-(t.startedAt||nowMs()); t.running=false; const last=t.sessions&&t.sessions.length?t.sessions[t.sessions.length-1]:null; if(last&&last.end==null) last.end=nowMs(); t.startedAt=null; }
+  function render(){
+    listEl.innerHTML='';
+    if(state.tasks.length===0){const d=document.createElement('div');d.className='muted';d.textContent='No tasks yet — add one above.';listEl.appendChild(d)}
+    state.tasks.slice().sort((a,b)=>(a.order-b.order)||(a.created>b.created?1:-1)).forEach((t,i)=>listEl.appendChild(row(t,i)));
+    updateProgress(); drawHeatmapStreakBest();
+  }
 
-// add/clear/archive
-on($('add'),'click',()=>{ const v=($('taskIn').value||'').trim(); if(!v) return; state.tasks.push({id:newId(),text:v,done:false,elapsed:0,running:false,startedAt:null,created:new Date().toISOString(),order:state.tasks.length,sessions:[],ttb_ms:null,deadline_ts:null,completed_at:null,sub:[]}); sv(LS_T,state.tasks); $('taskIn').value=''; render(); });
-on($('taskIn'),'keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); $('add').click(); }});
-on($('clr'),'click',()=>{ state.tasks=state.tasks.filter(t=>!t.done); reindex(); sv(LS_T,state.tasks); render(); });
-on($('arc'),'click',()=>{ const moved=[]; state.tasks=state.tasks.filter(t=>{ if(t.done){ moved.push(t); return false } return true}); if(moved.length){ state.arch=(state.arch||[]).concat(moved); sv(LS_T,state.tasks); sv(LS_A,state.arch); render(); }});
-on($('togArc'),'click',()=>{ const el=$('arch'); if(el.style.display==='none'){ el.style.display='block'; el.innerHTML=''; (state.arch||[]).slice().reverse().forEach(t=>{ const r=doc('div','item done'); r.innerHTML='<div class=\"txt\">✓ '+t.text+'</div><span class=\"tm\">'+fmtHMS(t.elapsed||0)+'</span>'; el.appendChild(r); }); } else el.style.display='none'; });
+  function row(t,idx,opts={isSub:false,parent:null}){
+    ensureShapeTask(t);
+    const r=document.createElement('div'); r.className='item'+(t.done?' done':'');
 
-// export/import
-on($('ex'),'click',()=>{ const data={version:'v5.5',exportedAt:new Date().toISOString(),tasks:state.tasks,arch:state.arch,set:state.set,best:state.best}; const blob=new Blob([JSON.stringify(data)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='study_tasks_backup.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),200); });
-on($('im'),'change',()=>{ const f=$('im').files[0]; if(!f) return; const fr=new FileReader(); fr.onload=()=>{ try{ const d=JSON.parse(fr.result); if(Array.isArray(d.tasks)) state.tasks=d.tasks.map(t=>({sub:[],sessions:[],ttb_ms:null,deadline_ts:null,completed_at:null,...t, sub:(t.sub||t.subtasks||[]).map(s=>({sessions:[],ttb_ms:null,deadline_ts:null,completed_at:null,...s}))})); if(Array.isArray(d.arch)) state.arch=d.arch; if(d.set) state.set=Object.assign(state.set,d.set); if(d.best) state.best=d.best; snd.value=state.set.cust?'custom':(state.set.snd||'ding'); vol.value=+state.set.vol||1; vLab.textContent=(vol.value*100|0)+'%'; play.checked=!!state.set.play; beat.checked=!!state.set.beat; sv(LS_T,state.tasks); sv(LS_A,state.arch); sv(LS_S,state.set); sv(LS_B,state.best); render(); }catch(e){ alert('Import failed: '+e.message) } }; fr.readAsText(f) });
+    const left=document.createElement('div'); left.className='left';
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=t.done;
+    on(cb,'change',()=>{ 
+      if(cb.checked){ if(t.running) pauseAny(t); t.done=true; t.completed_at=new Date().toISOString(); if(t.ttb_ms && currentMs(t)<=t.ttb_ms) playBeat(); playJingle(); }
+      else { t.done=false; t.completed_at=null; }
+      save(); render();
+    });
 
-// focus
-let F=null; const ovl=$('ovl'), fTitle=$('fTitle'), fClock=$('fClock'), fLines=$('fLines');
-function openFocus(obj,parent){ F={obj}; ovl.style.display='flex'; fTitle.textContent='Focus: '+obj.text; updF(); }
-on($('fStart'),'click',()=>{ if(!F) return; start(F.obj); sv(LS_T,state.tasks); });
-on($('fPause'),'click',()=>{ if(!F) return; pause(F.obj); sv(LS_T,state.tasks); });
-on($('fReset'),'click',()=>{ if(!F) return; if(confirm('Reset timer?')){ F.obj.elapsed=0; F.obj.sessions=[]; if(F.obj.running) F.obj.startedAt=nowMs(); sv(LS_T,state.tasks); }});
-on($('fDone'),'click',()=>{ if(!F) return; F.obj.done=true; pause(F.obj); if(F.obj.ttb_ms && curMs(F.obj)<=F.obj.ttb_ms) blip(); bell(); F.obj.completed_at=new Date().toISOString(); sv(LS_T,state.tasks); render(); });
-on($('fClose'),'click',()=>{ ovl.style.display='none'; F=null; });
-on(document,'keydown',e=>{ if(ovl.style.display==='flex'){ if(e.key==='Escape'){ ovl.style.display='none'; F=null; } else if(e.key===' '){ e.preventDefault(); if(!F) return; F.obj.running?pause(F.obj):start(F.obj); sv(LS_T,state.tasks); } else if(e.key.toLowerCase()==='r'){ e.preventDefault(); if(!F) return; F.obj.elapsed=0; F.obj.sessions=[]; if(F.obj.running) F.obj.startedAt=nowMs(); sv(LS_T,state.tasks); } }});
-function updF(){ if(!F) return; fClock.textContent=fmtHMS(curMs(F.obj)); fLines.innerHTML=''; if(F.obj.ttb_ms){ const rem=F.obj.ttb_ms-curMs(F.obj); addPill(rem>=0?('TTB '+fmtHMS(rem)+' left'):('TTB over '+fmtHMS(-rem))); } if(F.obj.deadline_ts){ const diff=F.obj.deadline_ts-nowMs(); addPill(diff>=0?('Deadline '+fmtHMS(diff)+' left'):('Deadline past '+fmtHMS(-diff))); } }
-function addPill(txt){ const s=document.createElement('span'); s.className='pill'; s.textContent=txt; fLines.appendChild(s) }
+    const txt=document.createElement('div'); txt.className='txt'; txt.textContent=t.text; txt.title='Click to edit';
+    function startEdit(){ txt.setAttribute('contenteditable','true'); txt.focus(); const range=document.createRange(); range.selectNodeContents(txt); range.collapse(false); const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(range); }
+    function stopEdit(saveIt){ if(txt.getAttribute('contenteditable')!=='true') return; txt.removeAttribute('contenteditable'); if(saveIt){ const v=txt.textContent.trim(); if(v){ t.text=v; save(); } else { txt.textContent=t.text; } } else { txt.textContent=t.text; } }
+    on(txt,'click',()=>startEdit());
+    on(txt,'keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); stopEdit(true); } if(e.key==='Escape'){ e.preventDefault(); stopEdit(false); } });
+    on(txt,'blur',()=>stopEdit(true));
 
-// best day scoreboard (minutes across tasks+subs by calendar day)
-function drawBest(){
-  const map={};
-  function addSpan(a,b){ if(!(a&&b)&&b<=a) return; let st=a; while(st<b){ const e=new Date(st); e.setHours(23,59,59,999); const end=Math.min(b,e.getTime()); const k=new Date(st).toISOString().slice(0,10); map[k]=(map[k]||0)+(end-st); st=end+1; } }
-  const all=[...state.tasks,...state.arch]; all.forEach(t=>{ (t.sessions||[]).forEach(s=> addSpan(s.start, s.end||nowMs())); (t.sub||[]).forEach(su=> (su.sessions||[]).forEach(s=> addSpan(s.start, s.end||nowMs())) ); });
-  Object.keys(map).forEach(k=> map[k]=(map[k]/6e4)|0);
-  const todayK=new Date().toISOString().slice(0,10), todayM=map[todayK]||0; $('today').textContent='Today '+fmtHM(todayM*6e4);
-  if(todayM>(state.best.m||0)) { state.best={m:todayM,date:todayK}; sv(LS_B,state.best); }
-  let best=state.best; for(const [d,m] of Object.entries(map)){ if(m>(best.m||0)) best={m,date:d}; }
-  $('best').textContent='🏆 Best '+fmtHM((best.m||0)*6e4)+' on '+(best.date||todayK);
-}
+    left.appendChild(cb); left.appendChild(txt);
 
-setInterval(()=>{
-  state.tasks.forEach(t=>{ if(t.running){ const el=$('tm-'+t.id); if(el) el.textContent=fmtHMS(curMs(t)); } updGoals(t,t.id); (t.sub||[]).forEach(s=>{ if(s.running){ const el=$('tm-'+t.id+'__'+s.id); if(el) el.textContent=fmtHMS(curMs(s)); } updGoals(s,t.id+'__'+s.id); }); });
-  drawBest(); if(ovl.style.display==='flex') updF();
-},1000);
+    const timer=document.createElement('span'); timer.className='timer'; timer.id='tm-'+t.id; timer.textContent=fmtHMS(currentMs(t));
 
-render();
+    const ctr=document.createElement('div'); ctr.className='controls';
+    const start=document.createElement('button'); start.className='btn'; start.textContent=t.running?'Pause':'Start';
+    on(start,'click',()=>{ if(t.running) pauseAny(t); else startRun(t); timer.textContent=fmtHMS(currentMs(t)); start.textContent=t.running?'Pause':'Start'; save(); });
+    const reset=document.createElement('button'); reset.className='btn'; reset.textContent='Reset';
+    on(reset,'click',()=>{ if(confirm('Reset timer and clear session history for this '+(opts.isSub?'subtask?':'task?'))){ t.elapsed=0; t.sessions=[]; if(t.running) t.startedAt=Date.now(); timer.textContent=fmtHMS(currentMs(t)); save(); render(); } });
+    const up=document.createElement('button'); up.className='btn'; up.textContent='↑'; on(up,'click',()=> move(idx,Math.max(0,idx-1),opts));
+    const down=document.createElement('button'); down.className='btn'; down.textContent='↓'; on(down,'click',()=> move(idx,Math.min((opts.isSub?(opts.parent.subtasks.length-1):(state.tasks.length-1)),idx+1),opts));
+    const focusBtn=document.createElement('button'); focusBtn.className='btn-primary'; focusBtn.textContent='Focus'; on(focusBtn,'click',()=> openFocus(t,opts));
+    const del=document.createElement('button'); del.className='btn btn-danger'; del.textContent='Delete';
+    on(del,'click',()=>{ if(confirm('Delete this '+(opts.isSub?'subtask':'task')+'?')){ if(t.running) pauseAny(t); if(opts.isSub){ opts.parent.subtasks = opts.parent.subtasks.filter(x=>x.id!==t.id); } else { state.tasks=state.tasks.filter(x=>x.id!==t.id); reindex(); } save(); render(); }});
 
-// helpers
-function moveSub(p,from,to){ if(from===to) return; const a=p.sub.slice(); const it=a.splice(from,1)[0]; a.splice(to,0,it); p.sub=a; sv(LS_T,state.tasks); render(); }
-})();</script>
-</body></html>
+    ctr.appendChild(start); ctr.appendChild(reset); ctr.appendChild(up); ctr.appendChild(down); ctr.appendChild(focusBtn); ctr.appendChild(del);
+
+    const goals=document.createElement('div'); goals.style.gridColumn='1/-1';
+    if(state.settings.showTTB){
+      const gl=document.createElement('div'); gl.className='goal-row';
+      const ttbTxt=document.createElement('span'); ttbTxt.className='mini'; ttbTxt.id='ttb-'+t.id; ttbTxt.textContent='TTB: —';
+      const ttbBar=document.createElement('div'); ttbBar.className='mini-bar'; const ttbFill=document.createElement('div'); ttbBar.appendChild(ttbFill); ttbBar.id='bar-'+t.id;
+      const dlTxt=document.createElement('span'); dlTxt.className='mini'; dlTxt.id='dl-'+t.id; dlTxt.textContent='Deadline: —';
+      gl.appendChild(ttbTxt); gl.appendChild(ttbBar); gl.appendChild(dlTxt);
+
+      // quick set controls
+      const quick=document.createElement('div'); quick.className='subheader';
+      const ttbInput=document.createElement('input'); ttbInput.type='number'; ttbInput.placeholder='TTB min'; ttbInput.style.width='100px'; ttbInput.value = t.ttb_ms? Math.round(t.ttb_ms/60000):'';
+      const setTTB=document.createElement('button'); setTTB.className='tiny'; setTTB.textContent='Set TTB';
+      on(setTTB,'click',()=>{ const mins=+ttbInput.value||0; t.ttb_ms = mins>0 ? mins*60000 : null; save(); updateGoalDisplays(t); if(focusRef?.obj?.id===t.id) updateFocusLines(); });
+      const dlInput=document.createElement('input'); dlInput.type='datetime-local'; dlInput.style.width='190px'; dlInput.value = t.deadline_ts? new Date(t.deadline_ts).toISOString().slice(0,16):'';
+      const setDL=document.createElement('button'); setDL.className='tiny'; setDL.textContent='Set Deadline';
+      on(setDL,'click',()=>{ const v=dlInput.value; t.deadline_ts = v? new Date(v).getTime(): null; save(); updateGoalDisplays(t); if(focusRef?.obj?.id===t.id) updateFocusLines(); });
+      quick.appendChild(ttbInput); quick.appendChild(setTTB); quick.appendChild(dlInput); quick.appendChild(setDL);
+
+      goals.appendChild(gl); goals.appendChild(quick);
+    }
+
+    r.appendChild(left); r.appendChild(timer); r.appendChild(ctr); r.appendChild(goals);
+    updateGoalDisplays(t);
+
+    // Subtasks area (only for top-level tasks)
+    if(!opts.isSub){
+      const subWrap=document.createElement('div'); subWrap.className='subwrap';
+      const subHead=document.createElement('div'); subHead.className='subheader';
+      const subTitle=document.createElement('span'); subTitle.className='mini'; subTitle.textContent='Subtasks';
+      const inp=document.createElement('input'); inp.type='text'; inp.placeholder='Add subtask… e.g., 1.1 Overview'; inp.style.flex='2';
+      const addSub=document.createElement('button'); addSub.className='tiny'; addSub.textContent='Add';
+      on(addSub,'click',()=>{ const v=(inp.value||'').trim(); if(!v) return; const st = makeTask(v, t.subtasks.length); t.subtasks.push(st); save(); render(); inp.value=''; });
+      on(inp,'keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); addSub.click(); }});
+      subHead.appendChild(subTitle); subHead.appendChild(inp); subHead.appendChild(addSub);
+
+      subWrap.appendChild(subHead);
+      const subList=document.createElement('div');
+      t.subtasks.slice().sort((a,b)=>(a.order-b.order)||(a.created>b.created?1:-1)).forEach((s,i)=>{
+        subList.appendChild(row(s,i,{isSub:true,parent:t}));
+      });
+      subWrap.appendChild(subList);
+      r.appendChild(subWrap);
+    }
+    return r;
+  }
+
+  function updateGoalDisplays(t){
+    const ms=currentMs(t);
+    const ttbEl=$('ttb-'+t.id), barEl=$('bar-'+t.id), dlEl=$('dl-'+t.id);
+    if(ttbEl && barEl){
+      if(t.ttb_ms){
+        const rem=t.ttb_ms-ms; const pct=Math.max(0,Math.min(100,Math.round(ms/t.ttb_ms*100))); barEl.firstChild.style.width=pct+'%';
+        if(rem>=0){ ttbEl.textContent='TTB: '+Math.round(t.ttb_ms/60000)+'m • remaining '+fmtHMS(rem); barEl.classList.remove('over'); }
+        else { ttbEl.textContent='TTB: '+Math.round(t.ttb_ms/60000)+'m • over by '+fmtHMS(-rem); barEl.classList.add('over'); }
+      } else { ttbEl.textContent='TTB: —'; barEl.firstChild.style.width='0%'; barEl.classList.remove('over'); }
+    }
+    if(dlEl){
+      if(t.deadline_ts){
+        const diff=t.deadline_ts-Date.now(); const d=new Date(t.deadline_ts); const timeStr=d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+        if(diff>=0){ dlEl.textContent='Deadline: ⏳ '+fmtDelta(diff)+' left ('+timeStr+')'; dlEl.style.color=''; }
+        else { dlEl.textContent='Deadline: ⏰ past by '+fmtDelta(-diff)+' ('+timeStr+')'; dlEl.style.color='#fecaca'; }
+      } else { dlEl.textContent='Deadline: —'; dlEl.style.color=''; }
+    }
+  }
+
+  function move(from,to,opts){ if(from===to) return; if(opts?.isSub){ const arr=opts.parent.subtasks.slice().sort((a,b)=>(a.order-b.order)||(a.created>b.created?1:-1)); const item=arr.splice(from,1)[0]; arr.splice(to,0,item); arr.forEach((t,i)=> t.order=i); opts.parent.subtasks=arr; } else { const arr=state.tasks.slice().sort((a,b)=>(a.order-b.order)||(a.created>b.created?1:-1)); const item=arr.splice(from,1)[0]; arr.splice(to,0,item); arr.forEach((t,i)=> t.order=i); state.tasks=arr; }
+    save(); render(); }
+  function reindex(){ state.tasks.forEach((t,i)=>{t.order=i; (t.subtasks||[]).forEach((s,j)=> s.order=j);}) }
+
+  function pauseAny(except){
+    function pauseOne(o){ if(!o.running) return; o.elapsed += Date.now()-(o.startedAt||Date.now()); o.running=false; const last=o.sessions&&o.sessions.length?o.sessions[o.sessions.length-1]:null; if(last&&last.end===null) last.end=Date.now(); o.startedAt=null; }
+    state.tasks.forEach(o=>{ if(o!==except) pauseOne(o); (o.subtasks||[]).forEach(s=>{ if(s!==except) pauseOne(s); }); });
+  }
+  function startRun(t){ pauseAny(t); if(t.running) return; t.running=true; t.startedAt=Date.now(); t.sessions=t.sessions||[]; t.sessions.push({start:t.startedAt,end:null}); }
+
+  function updateTimer(t){ const el=$('tm-'+t.id); if(el) el.textContent=fmtHMS(currentMs(t)); }
+
+  function updateProgress(){
+    const all=[...state.tasks, ...state.tasks.flatMap(t=>t.subtasks||[])];
+    const total=all.length||1; const done=all.filter(t=>t.done).length; const pct=Math.round(done/total*100);
+    $('progBar').style.width=pct+'%'; $('progText').textContent=pct+'% ('+done+'/'+(all.length||0)+' done)';
+    const totalMs=all.reduce((s,t)=> s+currentMs(t),0); $('totalTime').textContent='Total '+fmtHMS(totalMs);
+  }
+
+  function makeTask(text,order){
+    return { id:newId(), text, done:false, elapsed:0, running:false, startedAt:null, order:order||0, created:new Date().toISOString(), sessions:[], ttb_ms:null, deadline_ts:null, completed_at:null, subtasks:[] };
+  }
+
+  function aggregateMinutesByDay(){
+    const map={};
+    function addSpan(a,b){ if(!isFinite(a)||!isFinite(b)||b<=a) return; let start=a; while(start<b){ const dayEnd=new Date(start); dayEnd.setHours(23,59,59,999); const end=Math.min(b,dayEnd.getTime()); const key=new Date(start).toISOString().slice(0,10); map[key]=(map[key]||0)+(end-start); start=end+1; } }
+    function collect(arr){ (arr||[]).forEach(t=>{ (t.sessions||[]).forEach(s=>{ const a=s.start, b=s.end||Date.now(); addSpan(a,b); }); collect(t.subtasks||[]); }); }
+    collect(state.tasks); collect(state.archived);
+    Object.keys(map).forEach(k=> map[k]=Math.round(map[k]/60000));
+    return map;
+  }
+  function drawHeatmapStreakBest(){
+    const minutesByDay=aggregateMinutesByDay();
+    const today=new Date(); today.setHours(0,0,0,0); const todayKey=today.toISOString().slice(0,10);
+    const todayMin=minutesByDay[todayKey]||0; $('todayTop').textContent='Today '+fmtHM(todayMin*60000);
+    heatEl.innerHTML=''; for(let col=97; col>=0; col--){ const dayTs=today.getTime()-col*86400000; const key = new Date(dayTs).toISOString().slice(0,10); const mins=minutesByDay[key]||0;
+      let lvl=''; if(mins===0) lvl=''; else if(mins>=120) lvl='lvl4'; else if(mins>=60) lvl='lvl3'; else if(mins>=30) lvl='lvl2'; else lvl='lvl1';
+      const cell=document.createElement('div'); cell.className='cell '+lvl; cell.title=key+': '+mins+' min'; heatEl.appendChild(cell); }
+    let streak=0; for(let i=0;i<500;i++){ const key=new Date(today.getTime()-i*86400000).toISOString().slice(0,10); const mins=minutesByDay[key]||0; const hit = mins>0; if(hit) streak++; else break; }
+    $('streak').textContent='🔥 Streak: '+streak;
+
+    // Best day record
+    let bestM=0, bestDate=null; Object.entries(minutesByDay).forEach(([k,v])=>{ if(v>bestM){bestM=v; bestDate=k;} });
+    if(bestM > (state.best.minutes||0)){ state.best={minutes:bestM,date:bestDate}; saveBest(); }
+    if(state.best.minutes>0){ bestDay.textContent = 'Best '+fmtHM(state.best.minutes*60000)+' on '+state.best.date; }
+    else { bestDay.textContent='Best —'; }
+  }
+
+  // Focus overlay
+  let focusRef=null; // {obj, label}
+  function openFocus(obj,opts){
+    focusRef = {obj, label: (opts?.isSub? 'Subtask: ':'Task: ')+obj.text};
+    overlay.style.display='flex';
+    $('focusTitle').textContent='Focus • '+focusRef.label;
+    updateFocusClock();
+  }
+  function updateFocusLines(){
+    const obj = focusRef?.obj; if(!obj) return;
+    const ttbLine=$('focusTTBLine'); ttbLine.innerHTML='';
+    if(obj.ttb_ms){ const rem = obj.ttb_ms - currentMs(obj); const pill=document.createElement('span'); pill.className='pill'; pill.textContent = rem>=0 ? ('TTB remaining '+fmtHMS(rem)) : ('TTB over by '+fmtHMS(-rem)); ttbLine.appendChild(pill); }
+    const deadLine=$('focusDeadLine'); deadLine.innerHTML='';
+    if(obj.deadline_ts){ const diff = obj.deadline_ts - Date.now(); const pill=document.createElement('span'); pill.className='pill'; pill.textContent = diff>=0 ? ('Deadline '+fmtDelta(diff)+' left') : ('Deadline past by '+fmtDelta(-diff)); if(diff<0) pill.style.borderColor='#ef4444'; deadLine.appendChild(pill); }
+  }
+  function updateFocusClock(){ if(!focusRef) return; $('focusClock').textContent = fmtHMS(currentMs(focusRef.obj)); updateFocusLines(); }
+  on($('closeFocus'),'click',()=>{ overlay.style.display='none'; focusRef=null; });
+  on(focusStart,'click',()=>{ if(!focusRef) return; startRun(focusRef.obj); save(); });
+  on(focusPause,'click',()=>{ if(!focusRef) return; pauseAny(focusRef.obj); save(); });
+  on(focusReset,'click',()=>{ if(!focusRef) return; if(confirm('Reset timer and clear session history?')){ focusRef.obj.elapsed=0; focusRef.obj.sessions=[]; if(focusRef.obj.running) focusRef.obj.startedAt=Date.now(); save(); }});
+  on(focusDone,'click',()=>{ if(!focusRef) return; const o=focusRef.obj; o.done=true; pauseAny(o); if(o.ttb_ms && currentMs(o)<=o.ttb_ms) playBeat(); playJingle(); o.completed_at=new Date().toISOString(); save(); render(); });
+
+  on(document,'keydown',e=>{
+    if(overlay.style.display==='flex'){
+      if(e.key==='Escape'){ overlay.style.display='none'; focusRef=null; }
+      else if(e.key===' '){ e.preventDefault(); if(!focusRef) return; focusRef.obj.running?pauseAny(focusRef.obj):startRun(focusRef.obj); save(); }
+      else if(e.key.toLowerCase()==='r'){ e.preventDefault(); if(!focusRef) return; focusRef.obj.elapsed=0; focusRef.obj.sessions=[]; if(focusRef.obj.running) focusRef.obj.startedAt=Date.now(); save(); }
+    }
+  });
+
+  function addTask(){
+    const txt=(inputEl.value||'').trim(); if(!txt) return;
+    const t=makeTask(txt, state.tasks.length);
+    state.tasks.push(t); save(); render(); inputEl.value='';
+  }
+  on(addBtn,'click',addTask);
+  on(inputEl,'keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); addTask(); }});
+  on($('clearDoneBtn'),'click',()=>{ state.tasks.forEach(t=> t.subtasks = (t.subtasks||[]).filter(s=>!s.done)); state.tasks=state.tasks.filter(t=>!t.done); reindex(); save(); render(); });
+
+  on($('archiveBtn'),'click',()=>{ const moved=[]; const remain=[]; state.tasks.forEach(t=>{ const tcopy={...t, subtasks:(t.subtasks||[]).filter(s=>s.done)}; const tremain={...t, subtasks:(t.subtasks||[]).filter(s=>!s.done)}; if(t.done || tcopy.subtasks.length){ if(t.done) moved.push({...t, subtasks:(t.subtasks||[]) }); else moved.push(tcopy); }
+    if(!t.done){ remain.push(tremain); } }); state.tasks=remain; if(moved.length){ state.archived=(state.archived||[]).concat(moved); save(); saveArchive(); render(); }});
+
+  on($('toggleArchive'),'click',()=>{ const el=$('archList'); if(el.style.display==='none'){ el.style.display='block'; el.innerHTML=''; (state.archived||[]).slice().reverse().forEach(t=>{ const wrap=document.createElement('div'); wrap.className='item done'; wrap.innerHTML = '<div class="txt">✓ '+t.text+'</div><span class="timer">'+fmtHMS(t.elapsed||0)+'</span>'; el.appendChild(wrap); (t.subtasks||[]).forEach(s=>{ const r=document.createElement('div'); r.className='item done'; r.style.marginLeft='36px'; r.innerHTML = '<div class="txt">↳ '+s.text+'</div><span class="timer">'+fmtHMS(s.elapsed||0)+'</span>'; el.appendChild(r); }); }); } else { el.style.display='none'; }});
+
+  on(exportBtn,'click',()=>{ const data={version:'v5.6',exportedAt:new Date().toISOString(),tasks:state.tasks,archived:state.archived,settings:state.settings,best:state.best}; const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='study_tasks_backup.json'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},200)});
+  on(importFile,'change',()=>{ const f=importFile.files[0]; if(!f) return; const fr=new FileReader(); fr.onload=()=>{ try{ const data=JSON.parse(fr.result); if(Array.isArray(data.tasks)) state.tasks=data.tasks; if(Array.isArray(data.archived)) state.archived=data.archived; if(data.settings) state.settings=Object.assign({},state.settings,data.settings); if(data.best) state.best=data.best; (state.tasks||[]).forEach(ensureShapeTask); (state.archived||[]).forEach(ensureShapeTask); soundSel.value=state.settings.custom?'custom':(state.settings.sound||'ding'); volEl.value=typeof state.settings.vol==='number'?state.settings.vol:1; volLabel.textContent=Math.round(+volEl.value*100)+'%'; playChk.checked=!!state.settings.play; beatChk.checked=!!state.settings.beatChime; ttbToggle.checked=!!state.settings.showTTB; save(); saveArchive(); saveSettings(); saveBest(); render(); }catch(e){ const err=$('err'); err.style.display='block'; err.textContent='Import failed: '+e.message } }; fr.readAsText(f) });
+
+  // Jingle test
+  on(testBtn,'click',()=>{ playJingle(); });
+
+  setInterval(()=>{ function walk(arr){ (arr||[]).forEach(t=>{ if(t.running) updateTimer(t); updateGoalDisplays(t); walk(t.subtasks||[]); }); } walk(state.tasks); updateProgress(); drawHeatmapStreakBest(); if(focusRef) updateFocusClock(); },1000);
+
+  render();
+})();
+</script>
+</body>
+</html>
