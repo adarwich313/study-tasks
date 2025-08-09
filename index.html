@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Study Tasks + Timers (v5.6 • Subtasks + Best Day)</title>
+<title>Study Tasks + Timers (v5.7 • Subtasks + Best Day + Collapse + Font Controls)</title>
 <style>
   :root{--bg:#0b1225;--card:#111827;--text:#e5e7eb;--muted:#9aa3b2;--accent:#22c55e;--danger:#ef4444;--border:rgba(148,163,184,.2);--overlay:rgba(2,6,23,.7)}
   html,body{height:100%}
@@ -11,7 +11,7 @@
   .wrap{max-width:1040px;margin:24px auto;padding:16px}
   .card{background:rgba(17,24,39,.84);border:1px solid var(--border);backdrop-filter: blur(6px);border-radius:16px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
   .header{display:flex;align-items:center;gap:10px}
-  h1{margin:0;font-size:22px}
+  h1{margin:0;font-size:var(--h1size,22px)}
   .spacer{flex:1}
   .pill{font-size:12px;background:rgba(148,163,184,.15);padding:4px 8px;border-radius:999px;border:1px solid var(--border);margin-left:8px}
   .muted{color:var(--muted);font-size:12px}
@@ -24,7 +24,7 @@
   .list{margin-top:14px}
   .item{display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center;background:rgba(2,6,23,.5);border:1px solid rgba(148,163,184,.12);padding:10px 12px;border-radius:12px;margin:8px 0}
   .left{display:flex;gap:10px;align-items:center}
-  .txt{word-break:break-word;padding:2px 4px;border-radius:6px}
+  .txt{word-break:break-word;padding:2px 4px;border-radius:6px;font-size:var(--tasksize,16px)}
   .txt[contenteditable="true"]{outline:2px solid rgba(148,163,184,.35);background:#0b1225}
   .done .txt{text-decoration:line-through;color:#9ca3af}
   .timer{font-family:ui-monospace,Menlo,monospace;background:rgba(148,163,184,.12);padding:4px 8px;border-radius:10px}
@@ -47,16 +47,17 @@
   .heat{display:grid;grid-template-columns:repeat(14,10px);gap:3px;align-items:center}
   .cell{width:10px;height:10px;border-radius:2px;background:#1f2937;border:1px solid rgba(148,163,184,.12)}
   .lvl1{background:#1f6f3b} .lvl2{background:#2ea44f} .lvl3{background:#22c55e} .lvl4{background:#86efac}
-  .subwrap{grid-column:1/-1;margin-left:36px;margin-top:6px;border-left:2px dashed rgba(148,163,184,.25);padding-left:12px}
+  .subwrap{grid-column:1/-1;margin-left:36px;margin-top:6px;border-left:2px dashed rgba(148,163,184,.25);padding-left:12px}.subwrap .txt{font-size:var(--subsize,15px)}
   .subheader{display:flex;align-items:center;gap:8px;margin-top:4px}
   .tiny{font-size:11px;padding:4px 6px;border-radius:8px;border:1px solid var(--border);background:transparent;color:#e5e7eb}
+.edge{position:fixed;right:16px;bottom:16px;z-index:80}.caret{width:26px;height:26px;border-radius:8px;border:1px solid var(--border);background:transparent;color:#e5e7eb;display:inline-flex;align-items:center;justify-content:center;font-weight:700}.display-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}.range{accent-color:#22c55e}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="card">
     <div class="header">
-      <h1>Study Tasks + Timers <span class="muted">(v5.6)</span></h1>
+      <h1>Study Tasks + Timers <span class="muted">(v5.7)</span></h1>
       <div class="spacer"></div>
       <span id="todayTop" class="pill">Today 00:00</span>
       <span id="bestDay" class="pill" title="Best single-day total">Best —</span>
@@ -91,6 +92,20 @@
       <button id="testBtn" class="btn" type="button">Test Jingle</button>
     </div>
 
+    <div class="row" style="margin-top:4px">
+      <span class="muted">Display</span>
+      <div class="display-row">
+        <label class="muted">Header</label>
+        <input id="h1Size" class="range" type="range" min="18" max="34" step="1" value="22">
+        <label class="muted">Task</label>
+        <input id="taskSize" class="range" type="range" min="14" max="20" step="1" value="16">
+        <label class="muted">Subtask</label>
+        <input id="subSize" class="range" type="range" min="12" max="18" step="1" value="15">
+        <button id="collapseAll" class="btn" type="button">Collapse All</button>
+        <button id="expandAll" class="btn" type="button">Expand All</button>
+      </div>
+    </div>
+
     <div class="row" style="margin-top:8px">
       <span id="streak" class="pill">🔥 Streak: 0</span>
       <div id="heatmap" class="heat" title="Daily minutes heatmap (last 14×7 days)"></div>
@@ -103,6 +118,7 @@
     </div>
 
     <div id="list" class="list" aria-live="polite"></div>
+    <div id="bestFloat" class="pill edge" title="Best single-day total">Best —</div>
     <div id="archList" class="list" style="display:none"></div>
     <div id="err"></div>
   </div>
@@ -137,12 +153,12 @@
   const safeSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
   const safeGet=(k,fb)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb}catch{return fb}};
 
-  const LS_T='study_tasks_v56', LS_S='study_settings_v56', LS_A='study_archived_v56', LS_B='study_best_v56';
+  const LS_T='study_tasks_v57', LS_S='study_settings_v57', LS_A='study_archived_v57', LS_B='study_best_v57';
 
   let state={
     tasks:safeGet(LS_T,[]),
     archived:safeGet(LS_A,[]),
-    settings:Object.assign({sound:'ding',custom:null,vol:1,play:true,beatChime:true,showTTB:true}, safeGet(LS_S,{})),
+    settings:Object.assign({sound:'ding',custom:null,vol:1,play:true,beatChime:true,showTTB:true,h1Size:22,taskSize:16,subSize:15}, safeGet(LS_S,{})),
     best: safeGet(LS_B,{minutes:0,date:null})
   };
 
@@ -150,9 +166,11 @@
   const soundSel=$('soundSelect'), fileEl=$('soundFile'), volEl=$('vol'), volLabel=$('volLabel'), playChk=$('playToggle'), beatChk=$('beatToggle'), testBtn=$('testBtn');
   const exportBtn=$('exportBtn'), importFile=$('importFile');
   const progBar=$('progBar'), progText=$('progText'), totalTime=$('totalTime'), todayTop=$('todayTop');
-  const streakEl=$('streak'), heatEl=$('heatmap'), bestDay=$('bestDay');
+  const streakEl=$('streak'), heatEl=$('heatmap'), bestDay=$('bestDay'), bestFloat=$('bestFloat');
   const overlay=$('overlay'), focusTitle=$('focusTitle'), focusClock=$('focusClock'), focusStart=$('focusStart'), focusPause=$('focusPause'), focusReset=$('focusReset'), focusDone=$('focusDone');
   const ttbToggle=$('ttbToggle');
+  const h1Size=$('h1Size'), taskSize=$('taskSize'), subSize=$('subSize');
+  const collapseAllBtn=$('collapseAll'), expandAllBtn=$('expandAll');
 
   function saveSettings(){ safeSet(LS_S,state.settings) }
   function save(){ safeSet(LS_T,state.tasks) }
@@ -165,6 +183,7 @@
     if(t.deadline_ts===undefined) t.deadline_ts=null;
     if(t.completed_at===undefined) t.completed_at=null;
     if(!Array.isArray(t.subtasks)) t.subtasks=[];
+    if(typeof t.collapsed!=='boolean') t.collapsed=false;
     t.subtasks.forEach(ensureShapeTask);
   }
 
@@ -182,6 +201,17 @@
   on(playChk,'change',()=>{state.settings.play=!!playChk.checked;saveSettings()});
   on(beatChk,'change',()=>{state.settings.beatChime=!!beatChk.checked;saveSettings()});
   on(ttbToggle,'change',()=>{state.settings.showTTB=!!ttbToggle.checked;saveSettings(); render();});
+  function applyFontVars(){
+    document.documentElement.style.setProperty('--h1size', state.settings.h1Size+'px');
+    document.documentElement.style.setProperty('--tasksize', state.settings.taskSize+'px');
+    document.documentElement.style.setProperty('--subsize', state.settings.subSize+'px');
+  }
+  h1Size.value=state.settings.h1Size; taskSize.value=state.settings.taskSize; subSize.value=state.settings.subSize; applyFontVars();
+  on(h1Size,'input',()=>{state.settings.h1Size=+h1Size.value; applyFontVars(); saveSettings();});
+  on(taskSize,'input',()=>{state.settings.taskSize=+taskSize.value; applyFontVars(); saveSettings();});
+  on(subSize,'input',()=>{state.settings.subSize=+subSize.value; applyFontVars(); saveSettings();});
+  on(collapseAllBtn,'click',()=>{ state.tasks.forEach(t=> t.collapsed=true); save(); render(); });
+  on(expandAllBtn,'click',()=>{ state.tasks.forEach(t=> t.collapsed=false); save(); render(); });
 
   function playJingle(){ if(!state.settings.play) return; const v=typeof state.settings.vol==='number'?state.settings.vol:1;
     if(state.settings.custom&&soundSel.value==='custom'){const a=new Audio(state.settings.custom);a.volume=v;a.play().catch(()=>{});return}
@@ -222,6 +252,9 @@
     on(txt,'keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); stopEdit(true); } if(e.key==='Escape'){ e.preventDefault(); stopEdit(false); } });
     on(txt,'blur',()=>stopEdit(true));
 
+    const caret=document.createElement('button'); caret.className='caret'; caret.title='Collapse/expand'; caret.textContent = t.collapsed ? '▸' : '▾';
+    on(caret,'click',()=>{ t.collapsed=!t.collapsed; caret.textContent=t.collapsed?'▸':'▾'; save(); render(); });
+    left.appendChild(caret);
     left.appendChild(cb); left.appendChild(txt);
 
     const timer=document.createElement('span'); timer.className='timer'; timer.id='tm-'+t.id; timer.textContent=fmtHMS(currentMs(t));
@@ -260,11 +293,11 @@
       goals.appendChild(gl); goals.appendChild(quick);
     }
 
-    r.appendChild(left); r.appendChild(timer); r.appendChild(ctr); r.appendChild(goals);
+    r.appendChild(left); r.appendChild(timer); r.appendChild(ctr); if(!t.collapsed) r.appendChild(goals);
     updateGoalDisplays(t);
 
     // Subtasks area (only for top-level tasks)
-    if(!opts.isSub){
+    if(!opts.isSub && !t.collapsed){
       const subWrap=document.createElement('div'); subWrap.className='subwrap';
       const subHead=document.createElement('div'); subHead.className='subheader';
       const subTitle=document.createElement('span'); subTitle.className='mini'; subTitle.textContent='Subtasks';
@@ -348,7 +381,7 @@
     // Best day record
     let bestM=0, bestDate=null; Object.entries(minutesByDay).forEach(([k,v])=>{ if(v>bestM){bestM=v; bestDate=k;} });
     if(bestM > (state.best.minutes||0)){ state.best={minutes:bestM,date:bestDate}; saveBest(); }
-    if(state.best.minutes>0){ bestDay.textContent = 'Best '+fmtHM(state.best.minutes*60000)+' on '+state.best.date; }
+    if(state.best.minutes>0){ const txt='Best '+fmtHM(state.best.minutes*60000)+' on '+state.best.date; bestDay.textContent = txt; bestFloat.textContent = txt; } else { bestDay.textContent='Best —'; bestFloat.textContent='Best —'; }
     else { bestDay.textContent='Best —'; }
   }
 
