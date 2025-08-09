@@ -1,77 +1,123 @@
 <!DOCTYPE html>
-<html lang='en'>
+<html lang="en">
 <head>
-<meta charset='utf-8'>
-<meta name='viewport' content='width=device-width, initial-scale=1'>
-<title>Study Tasks + Timers (v5.3.1)</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Study Tasks + Timers (v5.4 • Focus Mode + Edit Tasks)</title>
 <style>
-  :root{--bg:#0b1225;--card:#111827;--text:#e5e7eb;--muted:#9aa3b2;--accent:#22c55e;--danger:#ef4444;--border:rgba(148,163,184,.2)}
-  html,body{height:100%} body{margin:0;background:#0b1225;color:#e5e7eb;font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-  .wrap{max-width:1000px;margin:24px auto;padding:16px}
-  .card{background:#111827;border:1px solid var(--border);border-radius:16px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  input,select{padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:#0b1225;color:#e5e7eb}
-  button{padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:transparent;color:#e5e7eb;cursor:pointer}
-  .btn-primary{background:var(--accent);border:none;color:#052e16}
-  .list{margin-top:10px}
-  .item{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;background:#0f162e;border:1px solid rgba(148,163,184,.15);border-radius:10px;padding:10px;margin:8px 0}
-  .txt{word-break:break-word} .done .txt{text-decoration:line-through;color:#9ca3af}
-  .timer{font-family:ui-monospace,Menlo,monospace;background:#0b1225;border:1px solid var(--border);border-radius:8px;padding:4px 8px}
+  :root{--bg:#0b1225;--card:#111827;--text:#e5e7eb;--muted:#9aa3b2;--accent:#22c55e;--danger:#ef4444;--border:rgba(148,163,184,.2);--overlay:rgba(2,6,23,.7)}
+  html,body{height:100%}
+  body{margin:0;background:linear-gradient(135deg,#0b1225,#121a33);color:#e5e7eb;font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  .wrap{max-width:1040px;margin:24px auto;padding:16px}
+  .card{background:rgba(17,24,39,.84);border:1px solid var(--border);backdrop-filter: blur(6px);border-radius:16px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  .header{display:flex;align-items:center;gap:10px}
+  h1{margin:0;font-size:22px}
+  .spacer{flex:1}
+  .pill{font-size:12px;background:rgba(148,163,184,.15);padding:4px 8px;border-radius:999px;border:1px solid var(--border);margin-left:8px}
+  .muted{color:var(--muted);font-size:12px}
+  .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  input[type="text"], input[type="number"], input[type="datetime-local"], input[type="date"]{flex:1;min-width:200px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:#0b1225;color:#e5e7eb;outline:none}
+  button{cursor:pointer;border:0;border-radius:12px;padding:10px 14px;font-weight:600}
+  .btn{background:transparent;border:1px solid var(--border);color:#e5e7eb}
+  .btn-primary{background:var(--accent);color:#052e16;border:0}
+  .btn-danger{background:rgba(239,68,68,.12);color:#fecaca;border:1px solid rgba(239,68,68,.35)}
+  .list{margin-top:14px}
+  .item{display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center;background:rgba(2,6,23,.5);border:1px solid rgba(148,163,184,.12);padding:10px 12px;border-radius:12px;margin:8px 0}
+  .left{display:flex;gap:10px;align-items:center}
+  .txt{word-break:break-word;padding:2px 4px;border-radius:6px}
+  .txt[contenteditable="true"]{outline:2px solid rgba(148,163,184,.35);background:#0b1225}
+  .done .txt{text-decoration:line-through;color:#9ca3af}
+  .timer{font-family:ui-monospace,Menlo,monospace;background:rgba(148,163,184,.12);padding:4px 8px;border-radius:10px}
+  .controls button{margin-left:6px}
+  #err{margin-top:8px;color:#fecaca;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);padding:8px 10px;border-radius:10px;display:none;font-size:12px;white-space:pre-wrap}
+  .progress-wrap{display:flex;align-items:center;gap:10px;margin:8px 0}
+  .progress{flex:1;height:10px;background:rgba(148,163,184,.18);border-radius:999px;overflow:hidden;border:1px solid var(--border)}
+  .progress>div{height:100%;width:0;background:linear-gradient(90deg,#22c55e,#16a34a);transition:width .2s}
+  .sep{height:1px;background:rgba(148,163,184,.18);margin:12px 0}
   .mini{font-size:12px;color:#9aa3b2}
+  .goal-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .mini-bar{flex:1;min-width:140px;height:8px;background:rgba(148,163,184,.18);border-radius:999px;overflow:hidden;border:1px solid var(--border)}
-  .mini-bar>div{height:100%;width:0;background:linear-gradient(90deg,#22c55e,#16a34a)}
+  .mini-bar>div{height:100%;width:0;background:linear-gradient(90deg,#22c55e,#16a34a);transition:width .2s}
   .mini-bar.over>div{background:linear-gradient(90deg,#ef4444,#dc2626)}
-  .goal-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .pill{font-size:12px;background:rgba(148,163,184,.15);padding:4px 8px;border-radius:999px;border:1px solid var(--border)}
-  .heat{display:grid;grid-template-columns:repeat(14,10px);gap:3px} .cell{width:10px;height:10px;border-radius:2px;background:#1f2937;border:1px solid rgba(148,163,184,.12)}
+  .overlay{position:fixed;inset:0;background:var(--overlay);display:none;align-items:center;justify-content:center;padding:20px;z-index:60}
+  .modal{max-width:760px;width:100%;background:rgba(17,24,39,.95);border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.5);position:relative}
+  .close-x{position:absolute;right:18px;top:14px;background:transparent;border:1px solid var(--border);color:#e5e7eb;border-radius:10px;padding:6px 10px;cursor:pointer}
+  .clock{font:700 56px/1 ui-monospace,Menlo,monospace;text-align:center;margin:8px 0 16px}
+  .focus-line{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+  .heat{display:grid;grid-template-columns:repeat(14,10px);gap:3px;align-items:center}
+  .cell{width:10px;height:10px;border-radius:2px;background:#1f2937;border:1px solid rgba(148,163,184,.12)}
   .lvl1{background:#1f6f3b} .lvl2{background:#2ea44f} .lvl3{background:#22c55e} .lvl4{background:#86efac}
 </style>
 </head>
 <body>
-<div class='wrap'>
-  <div class='card'>
-    <div class='row' style='justify-content:space-between'>
-      <h2 style='margin:0'>Study Tasks + Timers <span style='color:#9aa3b2'>(v5.3.1)</span></h2>
-      <span id='todayTop' class='pill'>Today 00:00</span>
+<div class="wrap">
+  <div class="card">
+    <div class="header">
+      <h1>Study Tasks + Timers <span class="muted">(v5.4)</span></h1>
+      <div class="spacer"></div>
+      <span id="todayTop" class="pill">Today 00:00</span>
     </div>
 
-    <div class='row' style='margin-top:8px'>
-      <input id='taskInput' placeholder='New task… e.g., 40 Anki cards'>
-      <button id='addBtn' class='btn-primary'>Add Task</button>
-      <button id='clearDoneBtn'>Clear Completed</button>
-      <button id='archiveBtn'>Archive Completed</button>
-      <button id='toggleArchive'>Open Archive</button>
-      <button id='exportBtn'>Export JSON</button>
-      <label for='importFile' style='border:1px solid var(--border);padding:10px 12px;border-radius:10px;cursor:pointer;'>Import JSON</label>
-      <input id='importFile' type='file' accept='application/json' style='display:none'>
+    <div class="row" style="margin-top:8px">
+      <input id="taskInput" type="text" placeholder="New task… e.g., 40 Anki cards">
+      <button class="btn-primary" id="addBtn" type="button">Add Task</button>
+      <button class="btn" id="clearDoneBtn" type="button">Clear Completed</button>
+      <button class="btn" id="archiveBtn" type="button">Archive Completed</button>
+      <button class="btn" id="toggleArchive" type="button">Open Archive</button>
+      <button class="btn" id="exportBtn" type="button">Export JSON</button>
+      <label class="btn" for="importFile" style="cursor:pointer;">Import JSON</label>
+      <input id="importFile" type="file" accept="application/json" style="display:none">
     </div>
 
-    <div class='row' style='margin-top:8px'>
-      <label class='mini'>Jingle</label>
-      <select id='soundSelect'><option value='ding'>Ding</option><option value='chime'>Chime</option><option value='pop'>Pop</option><option value='custom'>Custom</option></select>
-      <input id='soundFile' type='file' accept='audio/*'>
-      <label class='mini'>Volume</label>
-      <input id='vol' type='range' min='0' max='1' step='0.01' value='1' style='width:140px'>
-      <span id='volLabel' class='mini'>100%</span>
-      <label class='mini'><input id='playToggle' type='checkbox' checked> Play on complete</label>
-      <label class='mini'><input id='beatToggle' type='checkbox' checked> Chime when I beat TTB</label>
-      <button id='testBtn'>Test</button>
+    <div class="row" style="margin-top:8px">
+      <label class="muted">Jingle</label>
+      <select id="soundSelect" class="btn">
+        <option value="ding">Ding</option>
+        <option value="chime">Chime</option>
+        <option value="pop">Pop</option>
+        <option value="custom">Custom (uploaded)</option>
+      </select>
+      <input type="file" id="soundFile" accept="audio/*">
+      <label class="muted">Volume</label>
+      <input id="vol" type="range" min="0" max="1" step="0.01" value="1" style="width:140px">
+      <span id="volLabel" class="muted">100%</span>
+      <label class="muted"><input id="playToggle" type="checkbox" checked> Play on complete</label>
+      <label class="muted"><input id="beatToggle" type="checkbox" checked> Chime when I beat TTB</label>
+      <button id="testBtn" class="btn" type="button">Test Jingle</button>
     </div>
 
-    <div class='row' style='margin-top:8px'>
-      <span id='streak' class='pill'>🔥 Streak: 0</span>
-      <div id='heatmap' class='heat' title='Daily minutes heatmap (last 14×7 days)'></div>
-      <span id='totalTime' class='pill' style='margin-left:auto'>Total 00:00:00</span>
+    <div class="row" style="margin-top:8px">
+      <span id="streak" class="pill">🔥 Streak: 0</span>
+      <div id="heatmap" class="heat" title="Daily minutes heatmap (last 14×7 days)"></div>
+      <span id="totalTime" class="pill" style="margin-left:auto">Total 00:00:00</span>
     </div>
 
-    <div class='row' style='margin-top:8px'>
-      <div style='flex:1;height:10px;background:rgba(148,163,184,.18);border-radius:999px;overflow:hidden;border:1px solid var(--border)'><div id='progBar' style='height:100%;width:0;background:linear-gradient(90deg,#22c55e,#16a34a)'></div></div>
-      <span id='progText' class='mini'>0% (0/0 done)</span>
+    <div class="progress-wrap">
+      <div class="progress"><div id="progBar"></div></div>
+      <span id="progText" class="muted">0% (0/0 done)</span>
     </div>
 
-    <div id='list' class='list'></div>
-    <div id='archList' class='list' style='display:none'></div>
-    <div id='err' style='display:none;margin-top:8px;color:#fecaca;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);padding:8px 10px;border-radius:10px;font-size:12px;white-space:pre-wrap'></div>
+    <div id="list" class="list" aria-live="polite"></div>
+    <div id="archList" class="list" style="display:none"></div>
+    <div id="err"></div>
+  </div>
+</div>
+
+<!-- Focus Modal -->
+<div id="overlay" class="overlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <button id="closeFocus" class="close-x">Close (Esc)</button>
+    <h2 id="focusTitle">Focus</h2>
+    <div class="clock" id="focusClock">00:00:00</div>
+    <div class="focus-line" id="focusTTBLine"></div>
+    <div class="focus-line" id="focusDeadLine"></div>
+    <div class="row" style="justify-content:center">
+      <button id="focusStart" class="btn-primary">Start</button>
+      <button id="focusPause" class="btn">Pause</button>
+      <button id="focusReset" class="btn btn-danger">Reset</button>
+      <button id="focusDone" class="btn">Mark Done</button>
+    </div>
+    <div class="muted" style="text-align:center;margin-top:6px">Shortcuts: <strong>Space</strong> start/pause • <strong>R</strong> reset • <strong>Esc</strong> close</div>
   </div>
 </div>
 
@@ -85,7 +131,8 @@
   const newId=()=> 'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);
   const safeSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
   const safeGet=(k,fb)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb}catch{return fb}};
-  const LS_T='study_tasks_v531', LS_S='study_settings_v531', LS_A='study_archived_v531';
+
+  const LS_T='study_tasks_v54', LS_S='study_settings_v54', LS_A='study_archived_v54';
 
   let state={
     tasks:safeGet(LS_T,[]),
@@ -98,6 +145,7 @@
   const exportBtn=$('exportBtn'), importFile=$('importFile');
   const progBar=$('progBar'), progText=$('progText'), totalTime=$('totalTime'), todayTop=$('todayTop');
   const streakEl=$('streak'), heatEl=$('heatmap');
+  const overlay=$('overlay'), focusTitle=$('focusTitle'), focusClock=$('focusClock'), focusStart=$('focusStart'), focusPause=$('focusPause'), focusReset=$('focusReset'), focusDone=$('focusDone');
 
   function saveSettings(){ safeSet(LS_S,state.settings) }
   function save(){ safeSet(LS_T,state.tasks) }
@@ -127,9 +175,9 @@
   const fmtDelta=ms=>{ms=Math.floor(Math.abs(ms)/1000);const h=Math.floor(ms/3600),m=Math.floor((ms%3600)/60),s=ms%60;const p=[];if(h)p.push(h+'h');if(m||h)p.push(m+'m');p.push(s+'s');return p.join(' ')}
 
   function render(){
-    $('list').innerHTML='';
-    if(state.tasks.length===0){const d=document.createElement('div');d.className='mini';d.textContent='No tasks yet — add one above.';$('list').appendChild(d)}
-    state.tasks.slice().sort((a,b)=>(a.order-b.order)||(a.created>b.created?1:-1)).forEach((t,i)=>$('list').appendChild(row(t,i)));
+    listEl.innerHTML='';
+    if(state.tasks.length===0){const d=document.createElement('div');d.className='muted';d.textContent='No tasks yet — add one above.';listEl.appendChild(d)}
+    state.tasks.slice().sort((a,b)=>(a.order-b.order)||(a.created>b.created?1:-1)).forEach((t,i)=>listEl.appendChild(row(t,i)));
     updateProgress(); drawHeatmapAndStreak();
   }
 
@@ -140,25 +188,51 @@
     if(t.completed_at===undefined) t.completed_at=null;
 
     const r=document.createElement('div'); r.className='item'+(t.done?' done':'');
-    const left=document.createElement('div'); left.style.display='flex'; left.style.gap='8px'; left.style.alignItems='center';
+    const left=document.createElement('div'); left.className='left';
     const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=t.done;
-    cb.addEventListener('change',()=>{ 
+    on(cb,'change',()=>{ 
       if(cb.checked){ if(t.running) pause(t); t.done=true; t.completed_at=new Date().toISOString(); if(t.ttb_ms && currentMs(t)<=t.ttb_ms) playBeat(); playJingle(); }
       else { t.done=false; t.completed_at=null; }
       save(); render();
     });
-    const txt=document.createElement('div'); txt.className='txt'; txt.textContent=t.text; left.appendChild(cb); left.appendChild(txt);
+
+    const txt=document.createElement('div'); txt.className='txt'; txt.textContent=t.text; txt.title='Click to edit';
+    function startEdit(){
+      txt.setAttribute('contenteditable','true'); txt.focus();
+      const range=document.createRange(); range.selectNodeContents(txt); range.collapse(false);
+      const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    }
+    function stopEdit(saveIt){
+      if(txt.getAttribute('contenteditable')!=='true') return;
+      txt.removeAttribute('contenteditable');
+      if(saveIt){
+        const v=txt.textContent.trim();
+        if(v){ t.text=v; save(); }
+        else { txt.textContent=t.text; }
+      }else{ txt.textContent=t.text; }
+    }
+    on(txt,'click',()=>startEdit());
+    on(txt,'keydown',e=>{
+      if(e.key==='Enter'){ e.preventDefault(); stopEdit(true); }
+      if(e.key==='Escape'){ e.preventDefault(); stopEdit(false); }
+    });
+    on(txt,'blur',()=>stopEdit(true));
+
+    left.appendChild(cb); left.appendChild(txt);
 
     const timer=document.createElement('span'); timer.className='timer'; timer.id='tm-'+t.id; timer.textContent=fmtHMS(currentMs(t));
 
-    const ctr=document.createElement('div');
-    const start=document.createElement('button'); start.textContent=t.running?'Pause':'Start';
-    start.addEventListener('click',()=>{ if(t.running) pause(t); else startRun(t); timer.textContent=fmtHMS(currentMs(t)); start.textContent=t.running?'Pause':'Start'; save(); });
-    const reset=document.createElement('button'); reset.textContent='Reset'; reset.addEventListener('click',()=>{ if(confirm('Reset timer and clear history?')){ t.elapsed=0; t.sessions=[]; if(t.running) t.startedAt=Date.now(); timer.textContent=fmtHMS(currentMs(t)); save(); render(); }});
-    const up=document.createElement('button'); up.textContent='↑'; up.addEventListener('click',()=> move(idx,Math.max(0,idx-1)));
-    const down=document.createElement('button'); down.textContent='↓'; down.addEventListener('click',()=> move(idx,Math.min(state.tasks.length-1,idx+1)));
-    const del=document.createElement('button'); del.textContent='Delete'; del.style.borderColor='rgba(239,68,68,.35)'; del.addEventListener('click',()=>{ if(confirm('Delete task?')){ if(t.running) pause(t); state.tasks=state.tasks.filter(x=>x.id!==t.id); reindex(); save(); render(); }});
-    ctr.appendChild(start); ctr.appendChild(reset); ctr.appendChild(up); ctr.appendChild(down); ctr.appendChild(del);
+    const ctr=document.createElement('div'); ctr.className='controls';
+    const start=document.createElement('button'); start.className='btn'; start.textContent=t.running?'Pause':'Start';
+    on(start,'click',()=>{ if(t.running) pause(t); else startRun(t); timer.textContent=fmtHMS(currentMs(t)); start.textContent=t.running?'Pause':'Start'; save(); });
+    const reset=document.createElement('button'); reset.className='btn'; reset.textContent='Reset';
+    on(reset,'click',()=>{ if(confirm('Reset timer and clear session history for this task?')){ t.elapsed=0; t.sessions=[]; if(t.running) t.startedAt=Date.now(); timer.textContent=fmtHMS(currentMs(t)); save(); render(); } });
+    const up=document.createElement('button'); up.className='btn'; up.textContent='↑'; on(up,'click',()=> move(idx,Math.max(0,idx-1)));
+    const down=document.createElement('button'); down.className='btn'; down.textContent='↓'; on(down,'click',()=> move(idx,Math.min(state.tasks.length-1,idx+1)));
+    const focusBtn=document.createElement('button'); focusBtn.className='btn-primary'; focusBtn.textContent='Focus'; on(focusBtn,'click',()=> openFocus(t.id) );
+    const del=document.createElement('button'); del.className='btn btn-danger'; del.textContent='Delete';
+    on(del,'click',()=>{ if(confirm('Delete this task?')){ if(t.running) pause(t); state.tasks=state.tasks.filter(x=>x.id!==t.id); reindex(); save(); render(); }});
+    ctr.appendChild(start); ctr.appendChild(reset); ctr.appendChild(up); ctr.appendChild(down); ctr.appendChild(focusBtn); ctr.appendChild(del);
 
     const goals=document.createElement('div'); goals.style.gridColumn='1/-1';
     const gl=document.createElement('div'); gl.className='goal-row';
@@ -211,8 +285,6 @@
     Object.keys(map).forEach(k=> map[k]=Math.round(map[k]/60000));
     return map;
   }
-  function goalForDate(ts){ return 0 } // simplified goals in this compact build
-
   function drawHeatmapAndStreak(){
     const minutesByDay=aggregateMinutesByDay(); const today=new Date(); today.setHours(0,0,0,0); const todayKey=today.toISOString().slice(0,10);
     const todayMin=minutesByDay[todayKey]||0; $('todayTop').textContent='Today '+fmtHM(todayMin*60000);
@@ -222,6 +294,48 @@
     let streak=0; for(let i=0;i<500;i++){ const key=new Date(today.getTime()-i*86400000).toISOString().slice(0,10); const mins=minutesByDay[key]||0; const hit = mins>0; if(hit) streak++; else break; }
     $('streak').textContent='🔥 Streak: '+streak;
   }
+
+  // Focus overlay
+  let focusTask=null;
+  function openFocus(taskId){
+    focusTask = state.tasks.find(t=>t.id===taskId) || null;
+    if(!focusTask) return;
+    overlay.style.display='flex';
+    $('focusTitle').textContent='Focus: '+focusTask.text;
+    updateFocusClock();
+  }
+  function updateFocusClock(){ 
+    if(!focusTask) return; 
+    $('focusClock').textContent = fmtHMS(currentMs(focusTask)); 
+    const ttbLine=$('focusTTBLine'); ttbLine.innerHTML='';
+    if(focusTask.ttb_ms){
+      const rem = focusTask.ttb_ms - currentMs(focusTask);
+      const pill = document.createElement('span'); pill.className='pill'; 
+      pill.textContent = rem>=0 ? ('TTB remaining '+fmtHMS(rem)) : ('TTB over by '+fmtHMS(-rem));
+      ttbLine.appendChild(pill);
+    }
+    const deadLine=$('focusDeadLine'); deadLine.innerHTML='';
+    if(focusTask.deadline_ts){
+      const diff = focusTask.deadline_ts - Date.now();
+      const pill = document.createElement('span'); pill.className='pill'; 
+      pill.textContent = diff>=0 ? ('Deadline '+fmtDelta(diff)+' left') : ('Deadline past by '+fmtDelta(-diff));
+      if(diff<0) pill.style.borderColor='#ef4444';
+      deadLine.appendChild(pill);
+    }
+  }
+  on($('closeFocus'),'click',()=>{ overlay.style.display='none'; focusTask=null; });
+  on(focusStart,'click',()=>{ if(!focusTask) return; startRun(focusTask); save(); });
+  on(focusPause,'click',()=>{ if(!focusTask) return; pause(focusTask); save(); });
+  on(focusReset,'click',()=>{ if(!focusTask) return; if(confirm('Reset timer and clear session history for this task?')){ focusTask.elapsed=0; focusTask.sessions=[]; if(focusTask.running) focusTask.startedAt=Date.now(); save(); }});
+  on(focusDone,'click',()=>{ if(!focusTask) return; focusTask.done=true; pause(focusTask); if(focusTask.ttb_ms && currentMs(focusTask)<=focusTask.ttb_ms) playBeat(); playJingle(); focusTask.completed_at=new Date().toISOString(); save(); render(); });
+
+  on(document,'keydown',e=>{
+    if(overlay.style.display==='flex'){
+      if(e.key==='Escape'){ overlay.style.display='none'; focusTask=null; }
+      else if(e.key===' '){ e.preventDefault(); if(!focusTask) return; focusTask.running?pause(focusTask):startRun(focusTask); save(); }
+      else if(e.key.toLowerCase()==='r'){ e.preventDefault(); if(!focusTask) return; focusTask.elapsed=0; focusTask.sessions=[]; if(focusTask.running) focusTask.startedAt=Date.now(); save(); }
+    }
+  });
 
   function addTask(){
     const txt=(inputEl.value||'').trim(); if(!txt) return;
@@ -235,10 +349,11 @@
   on($('archiveBtn'),'click',()=>{ const moved=[]; state.tasks=state.tasks.filter(t=>{ if(t.done){ moved.push(t); return false } return true; }); if(moved.length){ state.archived=(state.archived||[]).concat(moved); save(); saveArchive(); render(); }});
   on($('toggleArchive'),'click',()=>{ const el=$('archList'); if(el.style.display==='none'){ el.style.display='block'; el.innerHTML=''; (state.archived||[]).slice().reverse().forEach(t=>{ const r=document.createElement('div'); r.className='item done'; r.innerHTML = '<div class="txt">✓ '+t.text+'</div><span class="timer">'+fmtHMS(t.elapsed||0)+'</span>'; el.appendChild(r); }); } else { el.style.display='none'; }});
 
-  on(exportBtn,'click',()=>{ const data={version:'v5.3.1',exportedAt:new Date().toISOString(),tasks:state.tasks,archived:state.archived,settings:state.settings}; const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='study_tasks_backup.json'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},200)});
+  on(exportBtn,'click',()=>{ const data={version:'v5.4',exportedAt:new Date().toISOString(),tasks:state.tasks,archived:state.archived,settings:state.settings}; const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='study_tasks_backup.json'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},200)});
   on(importFile,'change',()=>{ const f=importFile.files[0]; if(!f) return; const fr=new FileReader(); fr.onload=()=>{ try{ const data=JSON.parse(fr.result); if(Array.isArray(data.tasks)) state.tasks=data.tasks.map(t=>({sessions:[],ttb_ms:null,deadline_ts:null,completed_at:null,...t})); if(Array.isArray(data.archived)) state.archived=data.archived.map(t=>({sessions:[],ttb_ms:null,deadline_ts:null,completed_at:null,...t})); if(data.settings) state.settings=Object.assign({},state.settings,data.settings); soundSel.value=state.settings.custom?'custom':(state.settings.sound||'ding'); volEl.value=typeof state.settings.vol==='number'?state.settings.vol:1; volLabel.textContent=Math.round(+volEl.value*100)+'%'; playChk.checked=!!state.settings.play; beatChk.checked=!!state.settings.beatChime; save(); saveArchive(); saveSettings(); render(); }catch(e){ const err=$('err'); err.style.display='block'; err.textContent='Import failed: '+e.message } }; fr.readAsText(f) });
 
-  setInterval(()=>{ state.tasks.forEach(t=>{ if(t.running) updateTimer(t); updateGoalDisplays(t); }); updateProgress(); drawHeatmapAndStreak(); },1000);
+  setInterval(()=>{ state.tasks.forEach(t=>{ if(t.running) updateTimer(t); updateGoalDisplays(t); }); updateProgress(); drawHeatmapAndStreak(); if(focusTask) updateFocusClock(); },1000);
+
   render();
 })();
 </script>
