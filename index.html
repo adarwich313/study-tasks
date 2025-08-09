@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+<title>Study Tasks + Timers (v5.3.1)</title>
+<style>
+  :root{--bg:#0b1225;--card:#111827;--text:#e5e7eb;--muted:#9aa3b2;--accent:#22c55e;--danger:#ef4444;--border:rgba(148,163,184,.2)}
+  html,body{height:100%} body{margin:0;background:#0b1225;color:#e5e7eb;font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  .wrap{max-width:1000px;margin:24px auto;padding:16px}
+  .card{background:#111827;border:1px solid var(--border);border-radius:16px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  input,select{padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:#0b1225;color:#e5e7eb}
+  button{padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:transparent;color:#e5e7eb;cursor:pointer}
+  .btn-primary{background:var(--accent);border:none;color:#052e16}
+  .list{margin-top:10px}
+  .item{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;background:#0f162e;border:1px solid rgba(148,163,184,.15);border-radius:10px;padding:10px;margin:8px 0}
+  .txt{word-break:break-word} .done .txt{text-decoration:line-through;color:#9ca3af}
+  .timer{font-family:ui-monospace,Menlo,monospace;background:#0b1225;border:1px solid var(--border);border-radius:8px;padding:4px 8px}
+  .mini{font-size:12px;color:#9aa3b2}
+  .mini-bar{flex:1;min-width:140px;height:8px;background:rgba(148,163,184,.18);border-radius:999px;overflow:hidden;border:1px solid var(--border)}
+  .mini-bar>div{height:100%;width:0;background:linear-gradient(90deg,#22c55e,#16a34a)}
+  .mini-bar.over>div{background:linear-gradient(90deg,#ef4444,#dc2626)}
+  .goal-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .pill{font-size:12px;background:rgba(148,163,184,.15);padding:4px 8px;border-radius:999px;border:1px solid var(--border)}
+  .heat{display:grid;grid-template-columns:repeat(14,10px);gap:3px} .cell{width:10px;height:10px;border-radius:2px;background:#1f2937;border:1px solid rgba(148,163,184,.12)}
+  .lvl1{background:#1f6f3b} .lvl2{background:#2ea44f} .lvl3{background:#22c55e} .lvl4{background:#86efac}
+</style>
+</head>
+<body>
+<div class='wrap'>
+  <div class='card'>
+    <div class='row' style='justify-content:space-between'>
+      <h2 style='margin:0'>Study Tasks + Timers <span style='color:#9aa3b2'>(v5.3.1)</span></h2>
+      <span id='todayTop' class='pill'>Today 00:00</span>
+    </div>
+
+    <div class='row' style='margin-top:8px'>
+      <input id='taskInput' placeholder='New task… e.g., 40 Anki cards'>
+      <button id='addBtn' class='btn-primary'>Add Task</button>
+      <button id='clearDoneBtn'>Clear Completed</button>
+      <button id='archiveBtn'>Archive Completed</button>
+      <button id='toggleArchive'>Open Archive</button>
+      <button id='exportBtn'>Export JSON</button>
+      <label for='importFile' style='border:1px solid var(--border);padding:10px 12px;border-radius:10px;cursor:pointer;'>Import JSON</label>
+      <input id='importFile' type='file' accept='application/json' style='display:none'>
+    </div>
+
+    <div class='row' style='margin-top:8px'>
+      <label class='mini'>Jingle</label>
+      <select id='soundSelect'><option value='ding'>Ding</option><option value='chime'>Chime</option><option value='pop'>Pop</option><option value='custom'>Custom</option></select>
+      <input id='soundFile' type='file' accept='audio/*'>
+      <label class='mini'>Volume</label>
+      <input id='vol' type='range' min='0' max='1' step='0.01' value='1' style='width:140px'>
+      <span id='volLabel' class='mini'>100%</span>
+      <label class='mini'><input id='playToggle' type='checkbox' checked> Play on complete</label>
+      <label class='mini'><input id='beatToggle' type='checkbox' checked> Chime when I beat TTB</label>
+      <button id='testBtn'>Test</button>
+    </div>
+
+    <div class='row' style='margin-top:8px'>
+      <span id='streak' class='pill'>🔥 Streak: 0</span>
+      <div id='heatmap' class='heat' title='Daily minutes heatmap (last 14×7 days)'></div>
+      <span id='totalTime' class='pill' style='margin-left:auto'>Total 00:00:00</span>
+    </div>
+
+    <div class='row' style='margin-top:8px'>
+      <div style='flex:1;height:10px;background:rgba(148,163,184,.18);border-radius:999px;overflow:hidden;border:1px solid var(--border)'><div id='progBar' style='height:100%;width:0;background:linear-gradient(90deg,#22c55e,#16a34a)'></div></div>
+      <span id='progText' class='mini'>0% (0/0 done)</span>
+    </div>
+
+    <div id='list' class='list'></div>
+    <div id='archList' class='list' style='display:none'></div>
+    <div id='err' style='display:none;margin-top:8px;color:#fecaca;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);padding:8px 10px;border-radius:10px;font-size:12px;white-space:pre-wrap'></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const on=(el,ev,fn)=>el.addEventListener(ev,fn);
+  const $=id=>document.getElementById(id);
+  const pad=n=>String(n).padStart(2,'0');
+  const fmtHMS=ms=>{ms=Math.max(0,Math.floor(ms||0));const s=Math.floor(ms/1000);return pad(Math.floor(s/3600))+':'+pad(Math.floor((s%3600)/60))+':'+pad(s%60)};
+  const fmtHM=ms=>{ms=Math.max(0,Math.floor(ms/60000));return pad(Math.floor(ms/60))+':'+pad(ms%60)};
+  const newId=()=> 'id-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);
+  const safeSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
+  const safeGet=(k,fb)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb}catch{return fb}};
+  const LS_T='study_tasks_v531', LS_S='study_settings_v531', LS_A='study_archived_v531';
+
+  let state={
+    tasks:safeGet(LS_T,[]),
+    archived:safeGet(LS_A,[]),
+    settings:Object.assign({sound:'ding',custom:null,vol:1,play:true,beatChime:true}, safeGet(LS_S,{}))
+  };
+
+  const listEl=$('list'), inputEl=$('taskInput'), addBtn=$('addBtn');
+  const soundSel=$('soundSelect'), fileEl=$('soundFile'), volEl=$('vol'), volLabel=$('volLabel'), playChk=$('playToggle'), beatChk=$('beatToggle'), testBtn=$('testBtn');
+  const exportBtn=$('exportBtn'), importFile=$('importFile');
+  const progBar=$('progBar'), progText=$('progText'), totalTime=$('totalTime'), todayTop=$('todayTop');
+  const streakEl=$('streak'), heatEl=$('heatmap');
+
+  function saveSettings(){ safeSet(LS_S,state.settings) }
+  function save(){ safeSet(LS_T,state.tasks) }
+  function saveArchive(){ safeSet(LS_A,state.archived) }
+
+  soundSel.value=state.settings.custom?'custom':(state.settings.sound||'ding');
+  volEl.value=typeof state.settings.vol==='number'?state.settings.vol:1; volLabel.textContent=Math.round(+volEl.value*100)+'%';
+  playChk.checked=!!state.settings.play; beatChk.checked=!!state.settings.beatChime;
+
+  on(soundSel,'change',()=>{state.settings.sound=soundSel.value;saveSettings()});
+  on(fileEl,'change',()=>{const f=fileEl.files[0];if(!f)return;const fr=new FileReader();fr.onload=()=>{state.settings.custom=fr.result;state.settings.sound='custom';soundSel.value='custom';saveSettings()};fr.readAsDataURL(f)});
+  on(volEl,'input',()=>{state.settings.vol=+volEl.value;volLabel.textContent=Math.round(+volEl.value*100)+'%';saveSettings()});
+  on(playChk,'change',()=>{state.settings.play=!!playChk.checked;saveSettings()});
+  on(beatChk,'change',()=>{state.settings.beatChime=!!beatChk.checked;saveSettings()});
+
+  function playJingle(){ if(!state.settings.play) return; const v=typeof state.settings.vol==='number'?state.settings.vol:1;
+    if(state.settings.custom&&soundSel.value==='custom'){const a=new Audio(state.settings.custom);a.volume=v;a.play().catch(()=>{});return}
+    const ctx=new (window.AudioContext||window.webkitAudioContext)(); const now=ctx.currentTime;
+    const beep=(f,d,vol,delay,type='sine')=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type=type;o.frequency.value=f;g.gain.setValueAtTime(0.0001,now+delay);g.gain.exponentialRampToValueAtTime(vol,now+delay+0.02);g.gain.exponentialRampToValueAtTime(0.0001,now+delay+d);o.connect(g).connect(ctx.destination);o.start(now+delay);o.stop(now+delay+d+0.02)};
+    const m=soundSel.value||'ding'; if(m==='ding'){beep(880,0.10,v*0.7,0);beep(1175,0.12,v*0.6,0.12)} else if(m==='chime'){beep(659,0.25,v*0.8,0);beep(523,0.35,v*0.6,0.02);beep(784,0.40,v*0.5,0.03)} else {beep(300,0.09,v*0.4,0,'square')}
+  }
+  function playBeat(){ if(!state.settings.beatChime) return; const ctx=new (window.AudioContext||window.webkitAudioContext)(); const now=ctx.currentTime;
+    const t=(f,d,vol,delay)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type='triangle';o.frequency.value=f;g.gain.setValueAtTime(0.0001,now+delay);g.gain.exponentialRampToValueAtTime(vol,now+delay+0.02);g.gain.exponentialRampToValueAtTime(0.0001,now+delay+d);o.connect(g).connect(ctx.destination);o.start(now+delay);o.stop(now+delay+d+0.02)}; t(988,0.08,0.5,0); t(1319,0.10,0.5,0.10);
+  }
+
+  const currentMs = t => t.running ? t.elapsed + (Date.now()-(t.startedAt||Date.now())) : t.elapsed;
+  const fmtDelta=ms=>{ms=Math.floor(Math.abs(ms)/1000);const h=Math.floor(ms/3600),m=Math.floor((ms%3600)/60),s=ms%60;const p=[];if(h)p.push(h+'h');if(m||h)p.push(m+'m');p.push(s+'s');return p.join(' ')}
+
+  function render(){
+    $('list').innerHTML='';
+    if(state.tasks.length===0){const d=document.createElement('div');d.className='mini';d.textContent='No tasks yet — add one above.';$('list').appendChild(d)}
+    state.tasks.slice().sort((a,b)=>(a.order-b.order)||(a.created>b.created?1:-1)).forEach((t,i)=>$('list').appendChild(row(t,i)));
+    updateProgress(); drawHeatmapAndStreak();
+  }
+
+  function row(t,idx){
+    if(t.sessions===undefined) t.sessions=[];
+    if(t.ttb_ms===undefined) t.ttb_ms=null;
+    if(t.deadline_ts===undefined) t.deadline_ts=null;
+    if(t.completed_at===undefined) t.completed_at=null;
+
+    const r=document.createElement('div'); r.className='item'+(t.done?' done':'');
+    const left=document.createElement('div'); left.style.display='flex'; left.style.gap='8px'; left.style.alignItems='center';
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=t.done;
+    cb.addEventListener('change',()=>{ 
+      if(cb.checked){ if(t.running) pause(t); t.done=true; t.completed_at=new Date().toISOString(); if(t.ttb_ms && currentMs(t)<=t.ttb_ms) playBeat(); playJingle(); }
+      else { t.done=false; t.completed_at=null; }
+      save(); render();
+    });
+    const txt=document.createElement('div'); txt.className='txt'; txt.textContent=t.text; left.appendChild(cb); left.appendChild(txt);
+
+    const timer=document.createElement('span'); timer.className='timer'; timer.id='tm-'+t.id; timer.textContent=fmtHMS(currentMs(t));
+
+    const ctr=document.createElement('div');
+    const start=document.createElement('button'); start.textContent=t.running?'Pause':'Start';
+    start.addEventListener('click',()=>{ if(t.running) pause(t); else startRun(t); timer.textContent=fmtHMS(currentMs(t)); start.textContent=t.running?'Pause':'Start'; save(); });
+    const reset=document.createElement('button'); reset.textContent='Reset'; reset.addEventListener('click',()=>{ if(confirm('Reset timer and clear history?')){ t.elapsed=0; t.sessions=[]; if(t.running) t.startedAt=Date.now(); timer.textContent=fmtHMS(currentMs(t)); save(); render(); }});
+    const up=document.createElement('button'); up.textContent='↑'; up.addEventListener('click',()=> move(idx,Math.max(0,idx-1)));
+    const down=document.createElement('button'); down.textContent='↓'; down.addEventListener('click',()=> move(idx,Math.min(state.tasks.length-1,idx+1)));
+    const del=document.createElement('button'); del.textContent='Delete'; del.style.borderColor='rgba(239,68,68,.35)'; del.addEventListener('click',()=>{ if(confirm('Delete task?')){ if(t.running) pause(t); state.tasks=state.tasks.filter(x=>x.id!==t.id); reindex(); save(); render(); }});
+    ctr.appendChild(start); ctr.appendChild(reset); ctr.appendChild(up); ctr.appendChild(down); ctr.appendChild(del);
+
+    const goals=document.createElement('div'); goals.style.gridColumn='1/-1';
+    const gl=document.createElement('div'); gl.className='goal-row';
+    const ttbTxt=document.createElement('span'); ttbTxt.className='mini'; ttbTxt.id='ttb-'+t.id; ttbTxt.textContent='TTB: —';
+    const ttbBar=document.createElement('div'); ttbBar.className='mini-bar'; const ttbFill=document.createElement('div'); ttbBar.appendChild(ttbFill); ttbBar.id='bar-'+t.id;
+    const dlTxt=document.createElement('span'); dlTxt.className='mini'; dlTxt.id='dl-'+t.id; dlTxt.textContent='Deadline: —';
+    gl.appendChild(ttbTxt); gl.appendChild(ttbBar); gl.appendChild(dlTxt);
+    goals.appendChild(gl);
+
+    r.appendChild(left); r.appendChild(timer); r.appendChild(ctr); r.appendChild(goals);
+    updateGoalDisplays(t);
+    return r;
+  }
+
+  function updateGoalDisplays(t){
+    const ms=currentMs(t);
+    const ttbEl=$('ttb-'+t.id), barEl=$('bar-'+t.id), dlEl=$('dl-'+t.id);
+    if(ttbEl && barEl){
+      if(t.ttb_ms){
+        const rem=t.ttb_ms-ms; const pct=Math.max(0,Math.min(100,Math.round(ms/t.ttb_ms*100))); barEl.firstChild.style.width=pct+'%';
+        if(rem>=0){ ttbEl.textContent='TTB: '+Math.round(t.ttb_ms/60000)+'m • remaining '+fmtHMS(rem); barEl.classList.remove('over'); }
+        else { ttbEl.textContent='TTB: '+Math.round(t.ttb_ms/60000)+'m • over by '+fmtHMS(-rem); barEl.classList.add('over'); }
+      } else { ttbEl.textContent='TTB: —'; barEl.firstChild.style.width='0%'; barEl.classList.remove('over'); }
+    }
+    if(dlEl){
+      if(t.deadline_ts){
+        const diff=t.deadline_ts-Date.now(); const d=new Date(t.deadline_ts); const timeStr=d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+        if(diff>=0){ dlEl.textContent='Deadline: ⏳ '+fmtDelta(diff)+' left ('+timeStr+')'; dlEl.style.color=''; }
+        else { dlEl.textContent='Deadline: ⏰ past by '+fmtDelta(-diff)+' ('+timeStr+')'; dlEl.style.color='#fecaca'; }
+      } else { dlEl.textContent='Deadline: —'; dlEl.style.color=''; }
+    }
+  }
+
+  function move(from,to){ if(from===to) return; const arr=state.tasks.slice().sort((a,b)=>(a.order-b.order)||(a.created>b.created?1:-1)); const item=arr.splice(from,1)[0]; arr.splice(to,0,item); arr.forEach((t,i)=> t.order=i); state.tasks=arr; save(); render(); }
+  function reindex(){ state.tasks.forEach((t,i)=> t.order=i) }
+  function startRun(t){ state.tasks.forEach(o=>{ if(o.id!==t.id && o.running) pause(o) }); if(t.running) return; t.running=true; t.startedAt=Date.now(); t.sessions=t.sessions||[]; t.sessions.push({start:t.startedAt,end:null}); }
+  function pause(t){ if(!t.running) return; t.elapsed += Date.now()-(t.startedAt||Date.now()); t.running=false; const last=t.sessions&&t.sessions.length?t.sessions[t.sessions.length-1]:null; if(last&&last.end===null) last.end=Date.now(); t.startedAt=null; }
+  function updateTimer(t){ const el=$('tm-'+t.id); if(el) el.textContent=fmtHMS(currentMs(t)); }
+
+  function updateProgress(){
+    const total=state.tasks.length||1; const done=state.tasks.filter(t=>t.done).length; const pct=Math.round(done/total*100);
+    $('progBar').style.width=pct+'%'; $('progText').textContent=pct+'% ('+done+'/'+(state.tasks.length||0)+' done)';
+    const totalMs=state.tasks.reduce((s,t)=> s+currentMs(t),0); $('totalTime').textContent='Total '+fmtHMS(totalMs);
+  }
+
+  function aggregateMinutesByDay(){
+    const map={};
+    function addSpan(a,b){ if(!isFinite(a)||!isFinite(b)||b<=a) return; let start=a; while(start<b){ const dayEnd=new Date(start); dayEnd.setHours(23,59,59,999); const end=Math.min(b,dayEnd.getTime()); const key=new Date(start).toISOString().slice(0,10); map[key]=(map[key]||0)+(end-start); start=end+1; } }
+    [...state.tasks,...state.archived].forEach(t=>{ (t.sessions||[]).forEach(s=>{ const a=s.start, b=s.end||Date.now(); addSpan(a,b); }) });
+    Object.keys(map).forEach(k=> map[k]=Math.round(map[k]/60000));
+    return map;
+  }
+  function goalForDate(ts){ return 0 } // simplified goals in this compact build
+
+  function drawHeatmapAndStreak(){
+    const minutesByDay=aggregateMinutesByDay(); const today=new Date(); today.setHours(0,0,0,0); const todayKey=today.toISOString().slice(0,10);
+    const todayMin=minutesByDay[todayKey]||0; $('todayTop').textContent='Today '+fmtHM(todayMin*60000);
+    heatEl.innerHTML=''; for(let col=97; col>=0; col--){ const dayTs=today.getTime()-col*86400000; const key = new Date(dayTs).toISOString().slice(0,10); const mins=minutesByDay[key]||0;
+      let lvl=''; if(mins===0) lvl=''; else if(mins>=120) lvl='lvl4'; else if(mins>=60) lvl='lvl3'; else if(mins>=30) lvl='lvl2'; else lvl='lvl1';
+      const cell=document.createElement('div'); cell.className='cell '+lvl; cell.title=key+': '+mins+' min'; $('heatmap').appendChild(cell); }
+    let streak=0; for(let i=0;i<500;i++){ const key=new Date(today.getTime()-i*86400000).toISOString().slice(0,10); const mins=minutesByDay[key]||0; const hit = mins>0; if(hit) streak++; else break; }
+    $('streak').textContent='🔥 Streak: '+streak;
+  }
+
+  function addTask(){
+    const txt=(inputEl.value||'').trim(); if(!txt) return;
+    const t={ id:newId(), text:txt, done:false, elapsed:0, running:false, startedAt:null, order:state.tasks.length, created:new Date().toISOString(), sessions:[], ttb_ms:null, deadline_ts:null, completed_at:null };
+    state.tasks.push(t); save(); render(); inputEl.value='';
+  }
+  on(addBtn,'click',addTask);
+  on(inputEl,'keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); addTask(); }});
+  on($('clearDoneBtn'),'click',()=>{ state.tasks=state.tasks.filter(t=>!t.done); reindex(); save(); render(); });
+
+  on($('archiveBtn'),'click',()=>{ const moved=[]; state.tasks=state.tasks.filter(t=>{ if(t.done){ moved.push(t); return false } return true; }); if(moved.length){ state.archived=(state.archived||[]).concat(moved); save(); saveArchive(); render(); }});
+  on($('toggleArchive'),'click',()=>{ const el=$('archList'); if(el.style.display==='none'){ el.style.display='block'; el.innerHTML=''; (state.archived||[]).slice().reverse().forEach(t=>{ const r=document.createElement('div'); r.className='item done'; r.innerHTML = '<div class="txt">✓ '+t.text+'</div><span class="timer">'+fmtHMS(t.elapsed||0)+'</span>'; el.appendChild(r); }); } else { el.style.display='none'; }});
+
+  on(exportBtn,'click',()=>{ const data={version:'v5.3.1',exportedAt:new Date().toISOString(),tasks:state.tasks,archived:state.archived,settings:state.settings}; const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='study_tasks_backup.json'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},200)});
+  on(importFile,'change',()=>{ const f=importFile.files[0]; if(!f) return; const fr=new FileReader(); fr.onload=()=>{ try{ const data=JSON.parse(fr.result); if(Array.isArray(data.tasks)) state.tasks=data.tasks.map(t=>({sessions:[],ttb_ms:null,deadline_ts:null,completed_at:null,...t})); if(Array.isArray(data.archived)) state.archived=data.archived.map(t=>({sessions:[],ttb_ms:null,deadline_ts:null,completed_at:null,...t})); if(data.settings) state.settings=Object.assign({},state.settings,data.settings); soundSel.value=state.settings.custom?'custom':(state.settings.sound||'ding'); volEl.value=typeof state.settings.vol==='number'?state.settings.vol:1; volLabel.textContent=Math.round(+volEl.value*100)+'%'; playChk.checked=!!state.settings.play; beatChk.checked=!!state.settings.beatChime; save(); saveArchive(); saveSettings(); render(); }catch(e){ const err=$('err'); err.style.display='block'; err.textContent='Import failed: '+e.message } }; fr.readAsText(f) });
+
+  setInterval(()=>{ state.tasks.forEach(t=>{ if(t.running) updateTimer(t); updateGoalDisplays(t); }); updateProgress(); drawHeatmapAndStreak(); },1000);
+  render();
+})();
+</script>
+</body>
+</html>
