@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Study Tasks + Timers (v5.8 • Fix add-task + Reset storage)</title>
+<title>Study Tasks + Timers (v6.0 • Subtasks + Collapse + Best Day + Fix Pause)</title>
 <style>
   :root{--bg:#0b1225;--card:#111827;--text:#e5e7eb;--muted:#9aa3b2;--accent:#22c55e;--danger:#ef4444;--border:rgba(148,163,184,.2);--overlay:rgba(2,6,23,.7);--h1size:22px;--tasksize:16px;--subsize:15px}
   html,body{height:100%}
@@ -33,7 +33,6 @@
   .progress-wrap{display:flex;align-items:center;gap:10px;margin:8px 0}
   .progress{flex:1;height:10px;background:rgba(148,163,184,.18);border-radius:999px;overflow:hidden;border:1px solid var(--border)}
   .progress>div{height:100%;width:0;background:linear-gradient(90deg,#22c55e,#16a34a);transition:width .2s}
-  .sep{height:1px;background:rgba(148,163,184,.18);margin:12px 0}
   .mini{font-size:12px;color:#9aa3b2}
   .goal-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .mini-bar{flex:1;min-width:140px;height:8px;background:rgba(148,163,184,.18);border-radius:999px;overflow:hidden;border:1px solid var(--border)}
@@ -54,13 +53,20 @@
   .caret{width:26px;height:26px;border-radius:8px;border:1px solid var(--border);background:transparent;color:#e5e7eb;display:inline-flex;align-items:center;justify-content:center;font-weight:700}
   .display-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}
   .range{accent-color:#22c55e}
+  /* Smooth collapse animation */
+  .collapsible{transition:max-height .25s ease, opacity .2s ease, transform .2s ease;overflow:hidden}
+  .collapsible[aria-hidden="true"]{max-height:0;opacity:0;transform:translateY(-6px);pointer-events:none}
+  .collapsible[aria-hidden="false"]{max-height:700px;opacity:1;transform:none}
+  /* Simple & Compact modes */
+  .simple #heatmap,.simple #archList,.simple .goal-row,.simple .display-row input[type="number"],.simple .display-row input[type="datetime-local"],.simple #toggleArchive,.simple #archiveBtn{display:none!important}
+  .compact .timer,.compact .controls{display:none!important}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="card">
     <div class="header">
-      <h1>Study Tasks + Timers <span class="muted">(v5.8)</span></h1>
+      <h1>Study Tasks + Timers <span class="muted">(v6.0)</span></h1>
       <div class="spacer"></div>
       <span id="todayTop" class="pill">Today 00:00</span>
       <span id="bestDay" class="pill" title="Best single-day total">Best —</span>
@@ -105,6 +111,8 @@
         <input id="taskSize" class="range" type="range" min="14" max="20" step="1" value="16">
         <label class="muted">Subtask</label>
         <input id="subSize" class="range" type="range" min="12" max="18" step="1" value="15">
+        <label class="muted"><input id="simpleToggle" type="checkbox"> Simple UI</label>
+        <label class="muted"><input id="compactToggle" type="checkbox"> Compact</label>
         <button id="collapseAll" class="btn" type="button">Collapse All</button>
         <button id="expandAll" class="btn" type="button">Expand All</button>
       </div>
@@ -157,7 +165,7 @@
   const safeSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
   const safeGet=(k,fb)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb}catch{return fb}};
 
-  const LS_T='study_tasks_v58', LS_S='study_settings_v58', LS_A='study_archived_v58', LS_B='study_best_v58';
+  const LS_T='study_tasks_v60', LS_S='study_settings_v60', LS_A='study_archived_v60', LS_B='study_best_v60';
 
   function showErr(msg){ const e=$('err'); e.style.display='block'; e.textContent=String(msg); }
   function clearErr(){ const e=$('err'); e.style.display='none'; e.textContent=''; }
@@ -165,7 +173,7 @@
   let state={
     tasks:safeGet(LS_T,[]),
     archived:safeGet(LS_A,[]),
-    settings:Object.assign({sound:'ding',custom:null,vol:1,play:true,beatChime:true,showTTB:true,h1Size:22,taskSize:16,subSize:15}, safeGet(LS_S,{})),
+    settings:Object.assign({sound:'ding',custom:null,vol:1,play:true,beatChime:true,showTTB:true,h1Size:22,taskSize:16,subSize:15,simple:false,compact:false}, safeGet(LS_S,{})),
     best: safeGet(LS_B,{minutes:0,date:null})
   };
 
@@ -178,11 +186,12 @@
   const ttbToggle=$('ttbToggle');
   const h1Size=$('h1Size'), taskSize=$('taskSize'), subSize=$('subSize');
   const collapseAllBtn=$('collapseAll'), expandAllBtn=$('expandAll');
+  const simpleToggle=$('simpleToggle'), compactToggle=$('compactToggle');
 
-  function saveSettings(){ try{ safeSet(LS_S,state.settings) }catch(e){ showErr('Settings save failed: '+(e&&e.message?e.message:e)); } }
-  function save(){ try{ safeSet(LS_T,state.tasks) }catch(e){ showErr('Save failed: '+(e&&e.message?e.message:e)); } }
-  function saveArchive(){ try{ safeSet(LS_A,state.archived) }catch(e){ showErr('Archive save failed: '+(e&&e.message?e.message:e)); } }
-  function saveBest(){ try{ safeSet(LS_B,state.best) }catch(e){ showErr('Best save failed: '+(e&&e.message?e.message:e)); } }
+  function saveSettings(){ try{ safeSet(LS_S,state.settings) }catch(e){ showErr('Settings save failed: '+(e?.message||e)); } }
+  function save(){ try{ safeSet(LS_T,state.tasks) }catch(e){ showErr('Save failed: '+(e?.message||e)); } }
+  function saveArchive(){ try{ safeSet(LS_A,state.archived) }catch(e){ showErr('Archive save failed: '+(e?.message||e)); } }
+  function saveBest(){ try{ safeSet(LS_B,state.best) }catch(e){ showErr('Best save failed: '+(e?.message||e)); } }
 
   function ensureShapeTask(t){
     if(!t || typeof t!=='object') return;
@@ -202,25 +211,32 @@
   volEl.value=typeof state.settings.vol==='number'?state.settings.vol:1; volLabel.textContent=Math.round(+volEl.value*100)+'%';
   playChk.checked=!!state.settings.play; beatChk.checked=!!state.settings.beatChime; ttbToggle.checked=!!state.settings.showTTB;
 
-  on(soundSel,'change',()=>{state.settings.sound=soundSel.value;saveSettings()});
-  on(fileEl,'change',()=>{const f=fileEl.files[0];if(!f)return;const fr=new FileReader();fr.onload=()=>{state.settings.custom=fr.result;state.settings.sound='custom';soundSel.value='custom';saveSettings()};fr.readAsDataURL(f)});
-  on(volEl,'input',()=>{state.settings.vol=+volEl.value;volLabel.textContent=Math.round(+volEl.value*100)+'%';saveSettings()});
-  on(playChk,'change',()=>{state.settings.play=!!playChk.checked;saveSettings()});
-  on(beatChk,'change',()=>{state.settings.beatChime=!!beatChk.checked;saveSettings()});
-  on(ttbToggle,'change',()=>{state.settings.showTTB=!!ttbToggle.checked;saveSettings(); render();});
-
+  // font vars
   function applyFontVars(){
     document.documentElement.style.setProperty('--h1size', (state.settings.h1Size||22)+'px');
     document.documentElement.style.setProperty('--tasksize', (state.settings.taskSize||16)+'px');
     document.documentElement.style.setProperty('--subsize', (state.settings.subSize||15)+'px');
   }
   h1Size.value=state.settings.h1Size; taskSize.value=state.settings.taskSize; subSize.value=state.settings.subSize; applyFontVars();
+
+  // toggles
+  simpleToggle.checked = !!state.settings.simple; document.body.classList.toggle('simple', !!state.settings.simple);
+  compactToggle.checked = !!state.settings.compact; document.body.classList.toggle('compact', !!state.settings.compact);
+
+  on(soundSel,'change',()=>{state.settings.sound=soundSel.value;saveSettings()});
+  on(fileEl,'change',()=>{const f=fileEl.files[0];if(!f)return;const fr=new FileReader();fr.onload=()=>{state.settings.custom=fr.result;state.settings.sound='custom';soundSel.value='custom';saveSettings()};fr.readAsDataURL(f)});
+  on(volEl,'input',()=>{state.settings.vol=+volEl.value;volLabel.textContent=Math.round(+volEl.value*100)+'%';saveSettings()});
+  on(playChk,'change',()=>{state.settings.play=!!playChk.checked;saveSettings()});
+  on(beatChk,'change',()=>{state.settings.beatChime=!!beatChk.checked;saveSettings()});
+  on(ttbToggle,'change',()=>{state.settings.showTTB=!!ttbToggle.checked;saveSettings(); render();});
   on(h1Size,'input',()=>{state.settings.h1Size=+h1Size.value; applyFontVars(); saveSettings();});
   on(taskSize,'input',()=>{state.settings.taskSize=+taskSize.value; applyFontVars(); saveSettings();});
   on(subSize,'input',()=>{state.settings.subSize=+subSize.value; applyFontVars(); saveSettings();});
-  on(collapseAllBtn,'click',()=>{ state.tasks.forEach(t=> t.collapsed=true); save(); render(); });
-  on(expandAllBtn,'click',()=>{ state.tasks.forEach(t=> t.collapsed=false); save(); render(); });
+  on(simpleToggle,'change',()=>{ state.settings.simple = simpleToggle.checked; document.body.classList.toggle('simple', state.settings.simple); saveSettings(); });
+  on(compactToggle,'change',()=>{ state.settings.compact = compactToggle.checked; document.body.classList.toggle('compact', state.settings.compact); saveSettings(); });
+  on($('resetStorage'),'click',()=>{ if(confirm('This will clear all saved tasks, settings, and archives on this device. Proceed?')){ try{ localStorage.removeItem(LS_T); localStorage.removeItem(LS_A); localStorage.removeItem(LS_S); localStorage.removeItem(LS_B); state.tasks=[]; state.archived=[]; state.best={minutes:0,date:null}; state.settings={sound:'ding',custom:null,vol:1,play:true,beatChime:true,showTTB:true,h1Size:22,taskSize:16,subSize:15,simple:false,compact:false}; render(); }catch(err){ showErr('Reset failed: '+(err?.message||err)); } } });
 
+  // audio
   function playJingle(){ if(!state.settings.play) return; const v=typeof state.settings.vol==='number'?state.settings.vol:1;
     if(state.settings.custom&&soundSel.value==='custom'){const a=new Audio(state.settings.custom);a.volume=v;a.play().catch(()=>{});return}
     const ctx=new (window.AudioContext||window.webkitAudioContext)(); const now=ctx.currentTime;
@@ -234,6 +250,27 @@
   const currentMs = t => t && t.running ? t.elapsed + (Date.now()-(t.startedAt||Date.now())) : (t?t.elapsed:0);
   const fmtDelta=ms=>{ms=Math.floor(Math.abs(ms)/1000);const h=Math.floor(ms/3600),m=Math.floor((ms%3600)/60),s=ms%60;const p=[];if(h)p.push(h+'h');if(m||h)p.push(m+'m');p.push(s+'s');return p.join(' ')}
 
+  // Pause helpers (fixed)
+  function pauseTask(o){
+    if(!o || !o.running) return;
+    o.elapsed += Date.now() - (o.startedAt || Date.now());
+    o.running = false;
+    const last = o.sessions && o.sessions.length ? o.sessions[o.sessions.length-1] : null;
+    if(last && last.end === null) last.end = Date.now();
+    o.startedAt = null;
+  }
+  function pauseAllOthers(except){
+    state.tasks.forEach(o=>{
+      if(o !== except) pauseTask(o);
+      (o.subtasks||[]).forEach(s=>{ if(s !== except) pauseTask(s); });
+    });
+  }
+  function startRun(t){
+    pauseAllOthers(t);
+    if(t.running) return;
+    t.running=true; t.startedAt=Date.now(); t.sessions=t.sessions||[]; t.sessions.push({start:t.startedAt,end:null});
+  }
+
   function render(){ try{
     clearErr();
     listEl.innerHTML='';
@@ -241,19 +278,27 @@
     if(state.tasks.length===0){const d=document.createElement('div');d.className='muted';d.textContent='No tasks yet — add one above.';listEl.appendChild(d)}
     state.tasks.slice().sort((a,b)=>(a.order-b.order)||(a.created>b.created?1:-1)).forEach((t,i)=>listEl.appendChild(row(t,i)));
     updateProgress(); drawHeatmapStreakBest();
-  }catch(err){ showErr('Render error: '+(err&&err.message?err.message:err)); console.error(err); }}
+  }catch(err){ showErr('Render error: '+(err?.message||err)); console.error(err); }}
 
   function row(t,idx,opts={isSub:false,parent:null}){
     ensureShapeTask(t);
     const r=document.createElement('div'); r.className='item'+(t.done?' done':'');
 
     const left=document.createElement('div'); left.className='left';
-    const caret=document.createElement('button'); caret.className='caret'; caret.title='Collapse/expand'; caret.textContent = t.collapsed ? '▸' : '▾';
-    on(caret,'click',()=>{ t.collapsed=!t.collapsed; caret.textContent=t.collapsed?'▸':'▾'; save(); render(); });
+    const caret=document.createElement('button'); caret.className='caret'; caret.title='Collapse/expand (Alt+click: start & focus)'; caret.textContent = t.collapsed ? '▸' : '▾';
+    on(caret,'click',(e)=>{
+      if(e.altKey){ startRun(t); openFocus(t,opts); save(); return; }
+      t.collapsed=!t.collapsed; caret.textContent=t.collapsed?'▸':'▾';
+      const g = r.querySelector('.collapsible.goals');
+      const subs = r.querySelector('.subwrap.collapsible');
+      if(g) g.setAttribute('aria-hidden', t.collapsed?'true':'false');
+      if(subs) subs.setAttribute('aria-hidden', t.collapsed?'true':'false');
+      save();
+    });
 
     const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=t.done;
     on(cb,'change',()=>{ 
-      if(cb.checked){ if(t.running) pauseAny(t); t.done=true; t.completed_at=new Date().toISOString(); if(t.ttb_ms && currentMs(t)<=t.ttb_ms) playBeat(); playJingle(); }
+      if(cb.checked){ if(t.running) pauseTask(t); t.done=true; t.collapsed=true; t.completed_at=new Date().toISOString(); if(t.ttb_ms && currentMs(t)<=t.ttb_ms) playBeat(); playJingle(); if('vibrate' in navigator) navigator.vibrate(20); }
       else { t.done=false; t.completed_at=null; }
       save(); render();
     });
@@ -272,18 +317,19 @@
 
     const ctr=document.createElement('div'); ctr.className='controls';
     const start=document.createElement('button'); start.className='btn'; start.textContent=t.running?'Pause':'Start';
-    on(start,'click',()=>{ if(t.running) pauseAny(t); else startRun(t); timer.textContent=fmtHMS(currentMs(t)); start.textContent=t.running?'Pause':'Start'; save(); });
+    on(start,'click',()=>{ if(t.running) pauseTask(t); else startRun(t); timer.textContent=fmtHMS(currentMs(t)); start.textContent=t.running?'Pause':'Start'; save(); });
     const reset=document.createElement('button'); reset.className='btn'; reset.textContent='Reset';
     on(reset,'click',()=>{ if(confirm('Reset timer and clear session history for this '+(opts.isSub?'subtask?':'task?'))){ t.elapsed=0; t.sessions=[]; if(t.running) t.startedAt=Date.now(); timer.textContent=fmtHMS(currentMs(t)); save(); render(); } });
     const up=document.createElement('button'); up.className='btn'; up.textContent='↑'; on(up,'click',()=> move(idx,Math.max(0,idx-1),opts));
     const down=document.createElement('button'); down.className='btn'; down.textContent='↓'; on(down,'click',()=> move(idx,Math.min((opts.isSub?(opts.parent.subtasks.length-1):(state.tasks.length-1)),idx+1),opts));
     const focusBtn=document.createElement('button'); focusBtn.className='btn-primary'; focusBtn.textContent='Focus'; on(focusBtn,'click',()=> openFocus(t,opts));
     const del=document.createElement('button'); del.className='btn btn-danger'; del.textContent='Delete';
-    on(del,'click',()=>{ if(confirm('Delete this '+(opts.isSub?'subtask':'task')+'?')){ if(t.running) pauseAny(t); if(opts.isSub){ opts.parent.subtasks = opts.parent.subtasks.filter(x=>x.id!==t.id); } else { state.tasks=state.tasks.filter(x=>x.id!==t.id); reindex(); } save(); render(); }});
+    on(del,'click',()=>{ if(confirm('Delete this '+(opts.isSub?'subtask':'task')+'?')){ if(t.running) pauseTask(t); if(opts.isSub){ opts.parent.subtasks = opts.parent.subtasks.filter(x=>x.id!==t.id); } else { state.tasks=state.tasks.filter(x=>x.id!==t.id); reindex(); } save(); render(); }});
 
     ctr.appendChild(start); ctr.appendChild(reset); ctr.appendChild(up); ctr.appendChild(down); ctr.appendChild(focusBtn); ctr.appendChild(del);
 
-    const goals=document.createElement('div'); goals.style.gridColumn='1/-1';
+    // Goals (always mounted, collapsible)
+    const goals=document.createElement('div'); goals.style.gridColumn='1/-1'; goals.className='collapsible goals'; goals.setAttribute('aria-hidden', t.collapsed?'true':'false');
     if(state.settings.showTTB){
       const gl=document.createElement('div'); gl.className='goal-row';
       const ttbTxt=document.createElement('span'); ttbTxt.className='mini'; ttbTxt.id='ttb-'+t.id; ttbTxt.textContent='TTB: —';
@@ -293,35 +339,37 @@
 
       const quick=document.createElement('div'); quick.className='display-row';
       const ttbInput=document.createElement('input'); ttbInput.type='number'; ttbInput.placeholder='TTB min'; ttbInput.style.width='100px'; ttbInput.value = t.ttb_ms? Math.round(t.ttb_ms/60000):'';
-      const setTTB=document.createElement('button'); setTTB.className='tiny'; setTTB.textContent='Set TTB';
-      on(setTTB,'click',()=>{ const mins=+ttbInput.value||0; t.ttb_ms = mins>0 ? mins*60000 : null; save(); updateGoalDisplays(t); if(focusRef?.obj?.id===t.id) updateFocusLines(); });
+      const setTTB=document.createElement('button'); setTTB.className='tiny'; setTTB.textContent='Set TTB'; on(setTTB,'click',()=>{ const mins=+ttbInput.value||0; t.ttb_ms = mins>0 ? mins*60000 : null; save(); updateGoalDisplays(t); if(focusRef?.obj?.id===t.id) updateFocusLines(); });
       const dlInput=document.createElement('input'); dlInput.type='datetime-local'; dlInput.style.width='190px'; dlInput.value = t.deadline_ts? new Date(t.deadline_ts).toISOString().slice(0,16):'';
-      const setDL=document.createElement('button'); setDL.className='tiny'; setDL.textContent='Set Deadline';
-      on(setDL,'click',()=>{ const v=dlInput.value; t.deadline_ts = v? new Date(v).getTime(): null; save(); updateGoalDisplays(t); if(focusRef?.obj?.id===t.id) updateFocusLines(); });
+      const setDL=document.createElement('button'); setDL.className='tiny'; setDL.textContent='Set Deadline'; on(setDL,'click',()=>{ const v=dlInput.value; t.deadline_ts = v? new Date(v).getTime(): null; save(); updateGoalDisplays(t); if(focusRef?.obj?.id===t.id) updateFocusLines(); });
       quick.appendChild(ttbInput); quick.appendChild(setTTB); quick.appendChild(dlInput); quick.appendChild(setDL);
 
       goals.appendChild(gl); goals.appendChild(quick);
     }
 
-    r.appendChild(left); r.appendChild(timer); r.appendChild(ctr); if(!t.collapsed) r.appendChild(goals);
+    r.appendChild(left); r.appendChild(timer); r.appendChild(ctr); r.appendChild(goals);
     updateGoalDisplays(t);
 
-    if(!opts.isSub && !t.collapsed){
-      const subWrap=document.createElement('div'); subWrap.className='subwrap';
+    // Subtasks (always mounted, collapsible when parent collapsed)
+    if(!opts.isSub){
+      const subWrap=document.createElement('div'); subWrap.className='subwrap collapsible';
+      subWrap.setAttribute('aria-hidden', t.collapsed?'true':'false');
       const subHead=document.createElement('div'); subHead.className='display-row';
       const subTitle=document.createElement('span'); subTitle.className='mini'; subTitle.textContent='Subtasks';
+      const hideDone = document.createElement('label'); hideDone.className='muted'; hideDone.innerHTML = `<input type="checkbox" ${t.hideDoneSubs?'checked':''}> Hide done`;
+      hideDone.firstChild.addEventListener('change', e=>{ t.hideDoneSubs = e.target.checked; save(); render(); });
       const inp=document.createElement('input'); inp.type='text'; inp.placeholder='Add subtask… e.g., 1.1 Overview'; inp.style.flex='2';
       const addSub=document.createElement('button'); addSub.className='tiny'; addSub.textContent='Add';
       on(addSub,'click',()=>{ const v=(inp.value||'').trim(); if(!v) return; const st = makeTask(v, t.subtasks.length); t.subtasks.push(st); save(); render(); inp.value=''; });
       on(inp,'keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); addSub.click(); }});
-      subHead.appendChild(subTitle); subHead.appendChild(inp); subHead.appendChild(addSub);
+      subHead.appendChild(subTitle); subHead.appendChild(hideDone); subHead.appendChild(inp); subHead.appendChild(addSub);
 
-      subWrap.appendChild(subHead);
       const subList=document.createElement('div');
-      t.subtasks.slice().sort((a,b)=>(a.order-b.order)||(a.created>b.created?1:-1)).forEach((s,i)=>{
+      const showSubs = (t.hideDoneSubs) ? (t.subtasks||[]).filter(s=>!s.done) : (t.subtasks||[]);
+      showSubs.slice().sort((a,b)=>(a.order-b.order)||(a.created>b.created?1:-1)).forEach((s,i)=>{
         subList.appendChild(row(s,i,{isSub:true,parent:t}));
       });
-      subWrap.appendChild(subList);
+      subWrap.appendChild(subHead); subWrap.appendChild(subList);
       r.appendChild(subWrap);
     }
     return r;
@@ -349,12 +397,6 @@
   function move(from,to,opts){ if(from===to) return; if(opts?.isSub){ const arr=opts.parent.subtasks.slice().sort((a,b)=>(a.order-b.order)||(a.created>b.created?1:-1)); const item=arr.splice(from,1)[0]; arr.splice(to,0,item); arr.forEach((t,i)=> t.order=i); opts.parent.subtasks=arr; } else { const arr=state.tasks.slice().sort((a,b)=>(a.order-b.order)||(a.created>b.created?1:-1)); const item=arr.splice(from,1)[0]; arr.splice(to,0,item); arr.forEach((t,i)=> t.order=i); state.tasks=arr; }
     save(); render(); }
   function reindex(){ state.tasks.forEach((t,i)=>{t.order=i; (t.subtasks||[]).forEach((s,j)=> s.order=j);}) }
-
-  function pauseAny(except){
-    function pauseOne(o){ if(!o || !o.running) return; o.elapsed += Date.now()-(o.startedAt||Date.now()); o.running=false; const last=o.sessions&&o.sessions.length?o.sessions[o.sessions.length-1]:null; if(last&&last.end===null) last.end=Date.now(); o.startedAt=null; }
-    state.tasks.forEach(o=>{ if(o!==except) pauseOne(o); (o.subtasks||[]).forEach(s=>{ if(s!==except) pauseOne(s); }); });
-  }
-  function startRun(t){ pauseAny(t); if(t.running) return; t.running=true; t.startedAt=Date.now(); t.sessions=t.sessions||[]; t.sessions.push({start:t.startedAt,end:null}); }
 
   function updateTimer(t){ const el=$('tm-'+t.id); if(el) el.textContent=fmtHMS(currentMs(t)); }
 
@@ -392,6 +434,7 @@
     if(state.best.minutes>0){ const txt='Best '+fmtHM(state.best.minutes*60000)+' on '+state.best.date; bestDay.textContent = txt; bestFloat.textContent = txt; } else { bestDay.textContent='Best —'; bestFloat.textContent='Best —'; }
   }
 
+  // Focus overlay
   let focusRef=null; 
   function openFocus(obj,opts){
     focusRef = {obj, label: (opts?.isSub? 'Subtask: ':'Task: ')+obj.text};
@@ -409,14 +452,14 @@
   function updateFocusClock(){ if(!focusRef) return; $('focusClock').textContent = fmtHMS(currentMs(focusRef.obj)); updateFocusLines(); }
   on($('closeFocus'),'click',()=>{ overlay.style.display='none'; focusRef=null; });
   on(focusStart,'click',()=>{ if(!focusRef) return; startRun(focusRef.obj); save(); });
-  on(focusPause,'click',()=>{ if(!focusRef) return; pauseAny(focusRef.obj); save(); });
+  on(focusPause,'click',()=>{ if(!focusRef) return; pauseTask(focusRef.obj); save(); });
   on(focusReset,'click',()=>{ if(!focusRef) return; if(confirm('Reset timer and clear session history?')){ focusRef.obj.elapsed=0; focusRef.obj.sessions=[]; if(focusRef.obj.running) focusRef.obj.startedAt=Date.now(); save(); }});
-  on(focusDone,'click',()=>{ if(!focusRef) return; const o=focusRef.obj; o.done=true; pauseAny(o); if(o.ttb_ms && currentMs(o)<=o.ttb_ms) playBeat(); playJingle(); o.completed_at=new Date().toISOString(); save(); render(); });
+  on(focusDone,'click',()=>{ if(!focusRef) return; const o=focusRef.obj; o.done=true; pauseTask(o); if(o.ttb_ms && currentMs(o)<=o.ttb_ms) playBeat(); playJingle(); if('vibrate' in navigator) navigator.vibrate(20); o.completed_at=new Date().toISOString(); save(); render(); });
 
   on(document,'keydown',e=>{
     if(overlay.style.display==='flex'){
       if(e.key==='Escape'){ overlay.style.display='none'; focusRef=null; }
-      else if(e.key===' '){ e.preventDefault(); if(!focusRef) return; focusRef.obj.running?pauseAny(focusRef.obj):startRun(focusRef.obj); save(); }
+      else if(e.key===' '){ e.preventDefault(); if(!focusRef) return; focusRef.obj.running?pauseTask(focusRef.obj):startRun(focusRef.obj); save(); }
       else if(e.key.toLowerCase()==='r'){ e.preventDefault(); if(!focusRef) return; focusRef.obj.elapsed=0; focusRef.obj.sessions=[]; if(focusRef.obj.running) focusRef.obj.startedAt=Date.now(); save(); }
     }
   });
@@ -425,12 +468,13 @@
     try{
       const txt=(inputEl.value||'').trim(); if(!txt) return;
       const t=makeTask(txt, state.tasks && state.tasks.length ? state.tasks.length : 0);
+      ensureShapeTask(t);
       state.tasks = Array.isArray(state.tasks)? state.tasks : [];
-      state.tasks.push(t); save(); render(); inputEl.value='';
-    }catch(err){ showErr('Could not add task: '+(err&&err.message?err.message:err)); console.error(err); }
+      state.tasks.push(t); save(); render(); inputEl.value=''; inputEl.focus();
+    }catch(err){ showErr('Could not add task: '+(err?.message||err)); console.error(err); }
   }
   on(addBtn,'click',addTask);
-  on(inputEl,'keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); addTask(); }});
+  on(inputEl,'keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); addTask(); } if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){ e.preventDefault(); addTask(); }});
   on($('clearDoneBtn'),'click',()=>{ state.tasks.forEach(t=> t.subtasks = (t.subtasks||[]).filter(s=>!s.done)); state.tasks=state.tasks.filter(t=>!t.done); reindex(); save(); render(); });
 
   on($('archiveBtn'),'click',()=>{ const moved=[]; const remain=[]; state.tasks.forEach(t=>{ const tcopy={...t, subtasks:(t.subtasks||[]).filter(s=>s.done)}; const tremain={...t, subtasks:(t.subtasks||[]).filter(s=>!s.done)}; if(t.done || tcopy.subtasks.length){ if(t.done) moved.push({...t, subtasks:(t.subtasks||[]) }); else moved.push(tcopy); }
@@ -438,7 +482,7 @@
 
   on($('toggleArchive'),'click',()=>{ const el=$('archList'); if(el.style.display==='none'){ el.style.display='block'; el.innerHTML=''; (state.archived||[]).slice().reverse().forEach(t=>{ const wrap=document.createElement('div'); wrap.className='item done'; wrap.innerHTML = '<div class="txt">✓ '+t.text+'</div><span class="timer">'+fmtHMS(t.elapsed||0)+'</span>'; el.appendChild(wrap); (t.subtasks||[]).forEach(s=>{ const r=document.createElement('div'); r.className='item done'; r.style.marginLeft='36px'; r.innerHTML = '<div class="txt">↳ '+s.text+'</div><span class="timer">'+fmtHMS(s.elapsed||0)+'</span>'; el.appendChild(r); }); }); } else { el.style.display='none'; }});
 
-  on(exportBtn,'click',()=>{ const data={version:'v5.8',exportedAt:new Date().toISOString(),tasks:state.tasks,archived:state.archived,settings:state.settings,best:state.best}; const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='study_tasks_backup.json'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},200)});
+  on(exportBtn,'click',()=>{ const data={version:'v6.0',exportedAt:new Date().toISOString(),tasks:state.tasks,archived:state.archived,settings:state.settings,best:state.best}; const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='study_tasks_backup.json'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},200)});
   on(importFile,'change',()=>{ const f=importFile.files[0]; if(!f) return; const fr=new FileReader(); fr.onload=()=>{ try{ const data=JSON.parse(fr.result);
         if(Array.isArray(data.tasks)) state.tasks=data.tasks; else if(data.tasks && typeof data.tasks==='object') state.tasks=Object.values(data.tasks);
         if(Array.isArray(data.archived)) state.archived=data.archived;
@@ -448,14 +492,16 @@
         soundSel.value=state.settings.custom?'custom':(state.settings.sound||'ding');
         volEl.value=typeof state.settings.vol==='number'?state.settings.vol:1; volLabel.textContent=Math.round(+volEl.value*100)+'%';
         playChk.checked=!!state.settings.play; beatChk.checked=!!state.settings.beatChime; ttbToggle.checked=!!state.settings.showTTB; applyFontVars();
+        simpleToggle.checked=!!state.settings.simple; document.body.classList.toggle('simple', !!state.settings.simple);
+        compactToggle.checked=!!state.settings.compact; document.body.classList.toggle('compact', !!state.settings.compact);
         save(); saveArchive(); saveSettings(); saveBest(); render(); }catch(e){ showErr('Import failed: '+e.message) } }; fr.readAsText(f) });
-
-  on($('resetStorage'),'click',()=>{ if(confirm('This will clear all saved tasks, settings, and archives on this device. Proceed?')){ try{ localStorage.removeItem(LS_T); localStorage.removeItem(LS_A); localStorage.removeItem(LS_S); localStorage.removeItem(LS_B); state.tasks=[]; state.archived=[]; state.best={minutes:0,date:null}; state.settings={sound:'ding',custom:null,vol:1,play:true,beatChime:true,showTTB:true,h1Size:22,taskSize:16,subSize:15}; render(); }catch(err){ showErr('Reset failed: '+(err&&err.message?err.message:err)); } } });
 
   on(testBtn,'click',()=>{ playJingle(); });
 
   setInterval(()=>{ function walk(arr){ (arr||[]).forEach(t=>{ if(t.running) updateTimer(t); updateGoalDisplays(t); walk(t.subtasks||[]); }); } walk(state.tasks); updateProgress(); drawHeatmapStreakBest(); if(focusRef) updateFocusClock(); },1000);
 
+  // focus input at start
+  inputEl.focus();
   render();
 })();
 </script>
